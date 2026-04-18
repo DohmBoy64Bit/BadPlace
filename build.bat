@@ -8,7 +8,7 @@ set INCLUDES=-I include -I thirdparty/minhook/include -I thirdparty/minhook/src/
 set LINKLIBS=-lpsapi -static
 set TARGET=BadPlace.dll
 
-set SOURCES=src/main.cpp src/Core/Logger.cpp src/Hooks/HookManager.cpp src/Luau/LuauAPI.cpp src/Execution/ExecutionEngine.cpp
+set SOURCES=src/main.cpp src/Core/Logger.cpp src/Hooks/HookManager.cpp src/Luau/LuauAPI.cpp src/Execution/ExecutionEngine.cpp src/Execution/EnvironmentManager.cpp
 set MINHOOK_SOURCES=thirdparty/minhook/src/hook.c thirdparty/minhook/src/buffer.c thirdparty/minhook/src/trampoline.c thirdparty/minhook/src/hde/hde64.c
 
 echo Building %TARGET%...

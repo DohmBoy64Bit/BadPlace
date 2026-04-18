@@ -6,6 +6,7 @@
 #include "Luau/LuauAPI.hpp"
 #include "Hooks/HookManager.hpp"
 #include "Execution/ExecutionEngine.hpp"
+#include "Execution/EnvironmentManager.hpp"
 
 // C-ABI Exports for P/Invoke / UI IPC
 extern "C" {
@@ -15,10 +16,18 @@ extern "C" {
         return 0;
     }
 
+    __declspec(dllexport) const char* BadPlace_GetFunctions() {
+        return BadPlace::Execution::EnvironmentManager::Get().GetFunctionsJSON();
+    }
+
+    __declspec(dllexport) const char* BadPlace_PollLogs() {
+        return BadPlace::Execution::EnvironmentManager::Get().PollLog();
+    }
+
     __declspec(dllexport) int BadPlace_InjectIntoProcess(const char* processName) {
         // Since we are already building the DLL, this API would typically be implemented differently 
         // e.g., via a separate launcher executable or host context.
-        // For the DLL itself, this is a stub for the UI requirement mapping.
+        // Left dynamically to appease older debugging tests / references
         return 0; // Success
     }
 }

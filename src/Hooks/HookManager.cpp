@@ -1,6 +1,7 @@
 #include "Hooks/HookManager.hpp"
 #include "Luau/LuauAPI.hpp"
 #include "Execution/ExecutionEngine.hpp"
+#include "Execution/EnvironmentManager.hpp"
 #include "Core/Logger.hpp"
 #include "../../thirdparty/minhook/include/MinHook.h"
 #include <cstring>
@@ -24,6 +25,11 @@ namespace BadPlace {
 
                 // If this is the main state that was captured
                 if (L == g_capturedState.load()) {
+                    // Initialize Log hooks dynamically into the global table
+                    Execution::EnvironmentManager::Get().InitializeOverrides(L);
+                    // Update global functions map securely
+                    Execution::EnvironmentManager::Get().CacheGlobalFunctions(L);
+
                     // Pre-pcall hook execution queue (safely drain pending scripts)
                     Execution::ExecutionEngine::Get().ExecuteQueue(L);
                 }
