@@ -24,17 +24,23 @@ namespace BadPlace {
         }
 
         int HookedPrint(lua_State* L) {
-            EnvironmentManager::Get().PushLog("PRINT", ExtractLogArgs(L));
-            return 0; // We swallow it, or we could redirect it
+            std::string logLine = ExtractLogArgs(L);
+            EnvironmentManager::Get().PushLog("PRINT", logLine);
+            Logger::Log(("[LUA PRINT] " + logLine).c_str());
+            return 0; // We swallow it natively, but echo to our console
         }
 
         int HookedWarn(lua_State* L) {
-            EnvironmentManager::Get().PushLog("WARN", ExtractLogArgs(L));
+            std::string logLine = ExtractLogArgs(L);
+            EnvironmentManager::Get().PushLog("WARN", logLine);
+            Logger::Log(("[LUA WARN]  " + logLine).c_str());
             return 0;
         }
 
         int HookedError(lua_State* L) {
-            EnvironmentManager::Get().PushLog("ERROR", ExtractLogArgs(L));
+            std::string logLine = ExtractLogArgs(L);
+            EnvironmentManager::Get().PushLog("ERROR", logLine);
+            Logger::Log(("[LUA ERROR] " + logLine).c_str());
             return 0;
         }
 
