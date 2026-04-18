@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 using System;
 using System.IO;
 using System.Xml;
@@ -9,12 +10,14 @@ using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Highlighting.Xshd;
 using AvaloniaEdit.CodeCompletion;
 using BadPlaceUI.Injection;
+using BadPlaceUI.IPC;
 
 namespace BadPlaceUI;
 
 public partial class MainWindow : Window
 {
     private CompletionWindow? _completionWindow;
+    private PipeClient?       _pipe;
 
     public MainWindow()
     {
@@ -99,23 +102,61 @@ public partial class MainWindow : Window
 
     private void Attach_Click(object? sender, RoutedEventArgs e)
     {
-        // Resolve DLL path relative to the UI executable
         string dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BadPlace.dll");
 
         var (success, error) = Win32Injector.Inject("Polytoria Client", dllPath);
 
         if (success)
         {
-            AttachBtn.Content = "Attached!";
+            AttachBtn.Content  = "Attached!";
             AttachBtn.IsEnabled = false;
             AttachBtn.Classes.Remove("toolbarBtn");
             AttachBtn.Classes.Add("activeBtn");
+
+            // Give the DLL a moment to boot its pipe server, then connect
+            System.Threading.Tasks.Task.Delay(800).ContinueWith(_ =>
+            {
+                _pipe = new PipeClient();
+                _pipe.LogReceived += msg =>
+                    Dispatcher.UIThread.Post(() => AppendLog(msg));
+
+                bool piped = _pipe.Connect(5000);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (piped)
+                        AppendLog("[BadPlace] Pipe connected. Ready to execute.");
+                    else
+                        AppendLog("[BadPlace] Warning: pipe connection failed.");
+                });
+            });
         }
         else
         {
             AttachBtn.Content = "Failed";
             AttachBtn.Background = new SolidColorBrush(Color.FromRgb(100, 30, 30));
         }
+    }
+
+    private void Execute_Click(object? sender, RoutedEventArgs e)
+    {
+        string script = Editor.Text;
+        if (string.IsNullOrWhiteSpace(script)) return;
+
+        if (_pipe == null || !_pipe.IsConnected)
+        {
+            AppendLog("[BadPlace] Not connected — click Attach first.");
+            return;
+        }
+
+        _pipe.SendScript(script);
+        AppendLog("[BadPlace] Script sent.");
+    }
+
+    private void AppendLog(string message)
+    {
+        LogOutput.Text += message + "\n";
+        // Auto scroll to bottom
+        LogOutput.CaretIndex = LogOutput.Text?.Length ?? 0;
     }
 
     private void Close_Click(object? sender, RoutedEventArgs e)

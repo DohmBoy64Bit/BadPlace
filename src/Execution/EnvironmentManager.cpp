@@ -1,6 +1,7 @@
 #include "Execution/EnvironmentManager.hpp"
 #include "Luau/LuauAPI.hpp"
 #include "Core/Logger.hpp"
+#include "IPC/PipeServer.hpp"
 
 #define LUA_GLOBALSINDEX -10002
 #define LUA_TFUNCTION 6
@@ -25,21 +26,27 @@ namespace BadPlace {
 
         int HookedPrint(lua_State* L) {
             std::string logLine = ExtractLogArgs(L);
+            std::string entry = "[PRINT] " + logLine;
             EnvironmentManager::Get().PushLog("PRINT", logLine);
+            IPC::PipeServer::Get().PushLog(entry);
             Logger::Log(("[LUA PRINT] " + logLine).c_str());
-            return 0; // We swallow it natively, but echo to our console
+            return 0;
         }
 
         int HookedWarn(lua_State* L) {
             std::string logLine = ExtractLogArgs(L);
+            std::string entry = "[WARN]  " + logLine;
             EnvironmentManager::Get().PushLog("WARN", logLine);
+            IPC::PipeServer::Get().PushLog(entry);
             Logger::Log(("[LUA WARN]  " + logLine).c_str());
             return 0;
         }
 
         int HookedError(lua_State* L) {
             std::string logLine = ExtractLogArgs(L);
+            std::string entry = "[ERROR] " + logLine;
             EnvironmentManager::Get().PushLog("ERROR", logLine);
+            IPC::PipeServer::Get().PushLog(entry);
             Logger::Log(("[LUA ERROR] " + logLine).c_str());
             return 0;
         }

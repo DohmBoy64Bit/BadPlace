@@ -5,6 +5,7 @@
 #include "Hooks/HookManager.hpp"
 #include "Execution/ExecutionEngine.hpp"
 #include "Execution/EnvironmentManager.hpp"
+#include "IPC/PipeServer.hpp"
 
 // C-ABI Exports for P/Invoke / UI IPC
 extern "C" {
@@ -38,12 +39,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         if (BadPlace::LuauAPI::Initialize()) {
             if (BadPlace::Hooks::Initialize()) {
                 BadPlace::Logger::Log("All systems online.");
+                BadPlace::IPC::PipeServer::Get().Start();
             }
         }
 
         break;
     }
     case DLL_PROCESS_DETACH: {
+        BadPlace::IPC::PipeServer::Get().Stop();
         BadPlace::Hooks::Cleanup();
         BadPlace::Logger::Free();
         break;

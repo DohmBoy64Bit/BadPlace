@@ -68,35 +68,68 @@
 
         <!-- Main Content Area -->
         <Grid Grid.Row="1" Background="#2F2F2F">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="150" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="5" />
+                <RowDefinition Height="130" />
+            </Grid.RowDefinitions>
 
-            <!-- Text Editor Area -->
-            <AvaloniaEdit:TextEditor x:Name="Editor" Grid.Column="0" Margin="5" Background="#2B2B2B" Foreground="White"
-                                     ShowLineNumbers="True" 
-                                     FontFamily="Consolas" FontSize="14" />
+            <!-- Top: Editor + Script Sidebar -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="150" />
+                </Grid.ColumnDefinitions>
 
+                <!-- Text Editor Area -->
+                <AvaloniaEdit:TextEditor x:Name="Editor" Grid.Column="0" Margin="5" Background="#2B2B2B" Foreground="White"
+                                         ShowLineNumbers="True" 
+                                         FontFamily="Consolas" FontSize="14" />
 
-            <!-- Right Script List -->
-            <Grid Grid.Column="1" Margin="0,5,5,5" Background="#333333">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                
-                <ListBox Background="Transparent" BorderThickness="0" Foreground="White">
-                </ListBox>
+                <!-- Right Script List -->
+                <Grid Grid.Column="1" Margin="0,5,5,5" Background="#333333">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    
+                    <ListBox Background="Transparent" BorderThickness="0" Foreground="White">
+                    </ListBox>
 
-                <ScrollBar Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,0" />
+                    <ScrollBar Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,0" />
+                </Grid>
             </Grid>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
+                          Background="#1A1A1A" ResizeDirection="Rows" />
+
+            <!-- Bottom: Log Console -->
+            <Border Grid.Row="2" Background="#1E1E1E" BorderBrush="#333333" BorderThickness="0,1,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="OUTPUT" Foreground="#666666" FontSize="10"
+                               Margin="8,3,0,0" FontFamily="Consolas" />
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <TextBox x:Name="LogOutput"
+                                 Background="Transparent" Foreground="#CCCCCC"
+                                 BorderThickness="0" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12"
+                                 TextWrapping="NoWrap"
+                                 AcceptsReturn="True"
+                                 Margin="5,0" />
+                    </ScrollViewer>
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- Bottom Toolbar -->
         <Grid Grid.Row="2" Background="#212121">
             <StackPanel Orientation="Horizontal" Margin="5" Spacing="4">
-                <Button Classes="toolbarBtn" Content="Execute" />
+                <Button Classes="toolbarBtn" Content="Execute" Click="Execute_Click" x:Name="ExecuteBtn" />
                 <Button Classes="toolbarBtn" Content="Open File" />
                 <Button Classes="toolbarBtn" Content="Save File" />
                 <Button Classes="toolbarBtn" Content="Options" />
