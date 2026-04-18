@@ -2,14 +2,16 @@
 #include "Luau/LuauAPI.hpp"
 #include "Core/Logger.hpp"
 #include "IPC/PipeServer.hpp"
+#include "Execution/HttpManager.hpp"
+#include "Execution/ExecutionEngine.hpp"
 
-#define LUA_GLOBALSINDEX -10002
-#define LUA_TFUNCTION 6
+#include "Execution/ExecutionEngine.hpp"
 
 namespace BadPlace {
     namespace Execution {
 
-        // --- Core Overrides logic ---
+        static int s_callbackCounter = 1000;
+
         static std::string ExtractLogArgs(lua_State* L) {
             std::string logLine = "";
             int top = original_lua_gettop(L);
@@ -26,16 +28,15 @@ namespace BadPlace {
 
         int HookedPrint(lua_State* L) {
             std::string logLine = ExtractLogArgs(L);
-            std::string entry = "[PRINT] " + logLine;
-            EnvironmentManager::Get().PushLog("PRINT", logLine);
-            IPC::PipeServer::Get().PushLog(entry);
+            EnvironmentManager::Get().PushLog("LUA", logLine);
+            IPC::PipeServer::Get().PushLog(logLine);
             Logger::Log(("[LUA PRINT] " + logLine).c_str());
             return 0;
         }
 
         int HookedWarn(lua_State* L) {
             std::string logLine = ExtractLogArgs(L);
-            std::string entry = "[WARN]  " + logLine;
+            std::string entry = "BadPlace | Warning: " + logLine;
             EnvironmentManager::Get().PushLog("WARN", logLine);
             IPC::PipeServer::Get().PushLog(entry);
             Logger::Log(("[LUA WARN]  " + logLine).c_str());
@@ -44,30 +45,55 @@ namespace BadPlace {
 
         int HookedError(lua_State* L) {
             std::string logLine = ExtractLogArgs(L);
-            std::string entry = "[ERROR] " + logLine;
+            std::string entry = "BadPlace | Error: " + logLine;
             EnvironmentManager::Get().PushLog("ERROR", logLine);
             IPC::PipeServer::Get().PushLog(entry);
             Logger::Log(("[LUA ERROR] " + logLine).c_str());
             return 0;
         }
 
+        int CppHttpStart(lua_State* L) {
+            HttpRequest req;
+            if (original_lua_type(L, 1) == LUA_TSTRING) req.Url = original_lua_tolstring(L, 1, nullptr);
+            if (original_lua_type(L, 2) == LUA_TSTRING) req.Method = original_lua_tolstring(L, 2, nullptr);
+            if (original_lua_type(L, 3) == LUA_TSTRING) req.Body = original_lua_tolstring(L, 3, nullptr);
 
-        // --- Manager logic ---
+            int ticketId = HttpManager::StartRequest(req);
+            
+            original_lua_pushinteger(L, ticketId);
+            return 1;
+        }
+
+        int CppHttpPoll(lua_State* L) {
+            if (original_lua_type(L, 1) != LUA_TNUMBER) {
+                if (original_lua_pushboolean) original_lua_pushboolean(L, 0);
+                return 1;
+            }
+
+            const char* idStr = original_lua_tolstring(L, 1, nullptr);
+            int ticketId = idStr ? std::atoi(idStr) : -1;
+
+            HttpResponse res;
+            if (HttpManager::PollRequest(ticketId, res)) {
+                if (original_lua_pushboolean) original_lua_pushboolean(L, 1);
+                original_lua_pushinteger(L, res.StatusCode);
+                if (original_lua_pushstring) original_lua_pushstring(L, res.Body.c_str());
+                return 3;
+            }
+
+            if (original_lua_pushboolean) original_lua_pushboolean(L, 0);
+            return 1;
+        }
+
 
         void EnvironmentManager::PushLog(const std::string& type, const std::string& message) {
             std::lock_guard<std::mutex> lock(m_logMutex);
-            // Format: [TYPE] Message
             m_logQueue.push("[" + type + "] " + message);
         }
 
         const char* EnvironmentManager::PollLog() {
             std::lock_guard<std::mutex> lock(m_logMutex);
-            if (m_logQueue.empty()) {
-                return nullptr;
-            }
-            // Memory must be handled by caller or statically buffered if simple
-            // For P/Invoke, we can return a dynamically allocated string, but caller must free it (hard with C#).
-            // A safer approach: internal static buffer.
+            if (m_logQueue.empty()) return nullptr;
             static std::string currentLog;
             currentLog = m_logQueue.front();
             m_logQueue.pop();
@@ -78,9 +104,6 @@ namespace BadPlace {
             if (m_isInitialized) return;
             if (!original_lua_pushcclosurek || !original_lua_setfield) return;
 
-            // push the hooked functions and set them in globals
-            // lua_pushcfunction is typically mapped as lua_pushcclosurek(L, fn, name, 0, NULL)
-            
             original_lua_pushcclosurek(L, HookedPrint, "print", 0, nullptr);
             original_lua_setfield(L, LUA_GLOBALSINDEX, "print");
 
@@ -90,49 +113,78 @@ namespace BadPlace {
             original_lua_pushcclosurek(L, HookedError, "error", 0, nullptr);
             original_lua_setfield(L, LUA_GLOBALSINDEX, "error");
 
-            Logger::Log("Luau environment log overrides injected.");
+            original_lua_pushcclosurek(L, CppHttpStart, "cpp_http_start", 0, nullptr);
+            original_lua_setfield(L, LUA_GLOBALSINDEX, "cpp_http_start");
+
+            original_lua_pushcclosurek(L, CppHttpPoll, "cpp_http_poll", 0, nullptr);
+            original_lua_setfield(L, LUA_GLOBALSINDEX, "cpp_http_poll");
+
+            std::string wrapper = R"(
+                request = function(reqTable)
+                    if type(reqTable) ~= "table" then error("BadPlace | request() requires a table") end
+                    local url = reqTable.Url or ""
+                    local method = reqTable.Method or "GET"
+                    local body = reqTable.Body or ""
+                    
+                    local ticketId = cpp_http_start(url, method, body)
+                    
+                    if task and task.spawn then
+                        task.spawn(function()
+                            while true do
+                                local ready, status, resBody = cpp_http_poll(ticketId)
+                                if ready then
+                                    if reqTable.Callback then
+                                        reqTable.Callback({ StatusCode = status, Body = resBody })
+                                    end
+                                    break
+                                end
+                                task.wait(0.1)
+                            end
+                        end)
+                    else
+                        -- Fallback if no task scheduler exists
+                        local ready, status, resBody
+                        repeat
+                            ready, status, resBody = cpp_http_poll(ticketId)
+                        until ready
+                        if reqTable.Callback then
+                            reqTable.Callback({ StatusCode = status, Body = resBody })
+                        end
+                    end
+                end
+                
+                http_request = request -- Alias
+            )";
+            
+            if (ExecutionEngine::Get().CompileAndLoad(L, wrapper)) {
+                if (original_lua_pcall) original_lua_pcall(L, 0, 0, 0);
+            }
+
+            Logger::Log("Luau environment log overrides and async wrappers injected.");
             m_isInitialized = true;
         }
 
         void EnvironmentManager::CacheGlobalFunctions(lua_State* L) {
-            if (!original_lua_pushvalue || !original_lua_next || !original_lua_type || !original_lua_tolstring || !original_lua_settop || !original_lua_pushnil) {
-                return;
-            }
-
+            if (!original_lua_pushvalue || !original_lua_next || !original_lua_type || !original_lua_tolstring || !original_lua_settop || !original_lua_pushnil) return;
             std::string json = "[";
             bool first = true;
-
-            // Push globals table
             original_lua_pushvalue(L, LUA_GLOBALSINDEX);
-            
-            // Push nil for initial lua_next key
             original_lua_pushnil(L);
-
             while (original_lua_next(L, -2) != 0) {
-                // key is at -2, value is at -1
                 if (original_lua_type(L, -1) == LUA_TFUNCTION) {
-                    // It's a function. Let's get the key name.
-                    // IMPORTANT: lua_tolstring on a key can break lua_next if it converts a number,
-                    // but in _G most keys are strings anyway. For safety, we check type.
-                    if (original_lua_type(L, -2) == 4) { // LUA_TSTRING
+                    if (original_lua_type(L, -2) == LUA_TSTRING) {
                         size_t len;
                         const char* key = original_lua_tolstring(L, -2, &len);
                         if (key) {
-                            if (!first) {
-                                json += ",";
-                            }
+                            if (!first) json += ",";
                             json += "\"" + std::string(key, len) + "\"";
                             first = false;
                         }
                     }
                 }
-                // pop value, keep key for next iteration
                 original_lua_settop(L, -2);
             }
-            
-            // pop globals table
             original_lua_settop(L, -2);
-
             json += "]";
             m_cachedFunctions = json;
         }

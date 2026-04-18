@@ -2,6 +2,7 @@
 #include <string>
 #include <queue>
 #include <mutex>
+#include "Execution/HttpManager.hpp"
 
 typedef struct lua_State lua_State;
 

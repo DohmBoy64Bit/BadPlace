@@ -85,11 +85,11 @@ public partial class MainWindow : Window
             {
                 string fullPath = Path.Combine(_baseDir, "Scripts", fileName);
                 Editor.Text = File.ReadAllText(fullPath);
-                AppendLog($"[BadPlace] Loaded {fileName}");
+                AppendLog($"BadPlace | Loaded {fileName}");
             }
             catch (Exception ex)
             {
-                AppendLog($"[BadPlaceHub] Error loading script: {ex.Message}");
+                AppendLog($"BadPlace | Error loading script: {ex.Message}");
             }
         }
     }
@@ -190,9 +190,9 @@ public partial class MainWindow : Window
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (piped)
-                        AppendLog("[BadPlace] Pipe connected. Ready to execute.");
+                        AppendLog("BadPlace | Pipe connected. Ready to execute.");
                     else
-                        AppendLog("[BadPlace] Warning: pipe connection failed.");
+                        AppendLog("BadPlace | Warning: pipe connection failed.");
                 });
             });
         }
@@ -210,12 +210,12 @@ public partial class MainWindow : Window
 
         if (_pipe == null || !_pipe.IsConnected)
         {
-            AppendLog("[BadPlace] Not connected — click Attach first.");
+            AppendLog("BadPlace | Not connected — click Attach first.");
             return;
         }
 
         _pipe.SendScript(script);
-        AppendLog("[BadPlace] Script sent.");
+        AppendLog("BadPlace | Script sent.");
     }
 
     private void AppendLog(string message)
@@ -248,7 +248,7 @@ public partial class MainWindow : Window
             using var stream = await files[0].OpenReadAsync();
             using var reader = new StreamReader(stream);
             Editor.Text = await reader.ReadToEndAsync();
-            AppendLog($"[BadPlaceHub] Loaded {files[0].Name}");
+            AppendLog($"BadPlace | Loaded {files[0].Name}");
         }
     }
 
@@ -275,7 +275,7 @@ public partial class MainWindow : Window
             using var stream = await file.OpenWriteAsync();
             using var writer = new StreamWriter(stream);
             await writer.WriteAsync(Editor.Text);
-            AppendLog($"[BadPlaceHub] Saved to {file.Name}");
+            AppendLog($"BadPlace | Saved to {file.Name}");
             RefreshScriptList();
         }
     }

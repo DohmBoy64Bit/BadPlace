@@ -21,6 +21,7 @@
 6. **IPC Architecture**: The DLL hosts a **Named Pipe Server** (`\\.\pipe\BadPlaceExec` + `\\.\pipe\BadPlaceLogs`) in two background threads. The UI is a thin pipe client. Protocol is length-prefixed binary (4-byte uint32 length + UTF-8 body). This is the sole communication channel between the UI and the injected DLL.
 7. **Console/Terminal**: The legacy `ConsoleThread` (fgets stdin loop) and `AllocConsole` have been fully removed. The DLL boots completely silently. All output goes through the Logger and/or the log pipe.
 8. **UI Admin Rights**: `BadPlaceUI.exe` requires and requests administrator privileges via `app.manifest` (`requireAdministrator`) for `OpenProcess(PROCESS_ALL_ACCESS)` to succeed.
+9. **Async Native Polling (Networking)**: C++ asynchronously fetches HTTP responses off-thread via `WinHttp` but **never** blindly fires closures directly into the Godot loop natively (`lua_pcall` inside `_update` crashes engine bindings). It adopts a pure string-ID ticket polling model leveraging a natively compiled Luau `request` polyfill script mapped tightly into `LUA_GLOBALSINDEX` that spins on engine-safe `task.spawn` loops.
 
 ## Key File Map
 | File | Role |
@@ -40,6 +41,7 @@
 - Both named pipes (`BadPlaceExec`, `BadPlaceLogs`) connect successfully after injection.
 - Scripts sent from AvaloniaEdit editor execute inside the Luau VM.
 - `print()` output is intercepted by C++ hooks and streamed live back to the UI output panel.
+- Asynchronous networking module (`request`) successfully fetches payloads yielding seamlessly through Godot's built-in `TaskScheduler` using polyfilled polling endpoints.
 - Polytoria `NullReferenceException` on `FreePTCallback` is a pre-existing Polytoria engine bug — unrelated to BadPlace.
 
 ## Known Gotchas
