@@ -30,6 +30,12 @@ namespace BadPlace {
                     // Update global functions map securely
                     Execution::EnvironmentManager::Get().CacheGlobalFunctions(L);
 
+                    static bool s_hasExecutedTest = false;
+                    if (!s_hasExecutedTest) {
+                        Execution::ExecutionEngine::Get().QueueScript("print('hello from the bad place')");
+                        s_hasExecutedTest = true;
+                    }
+
                     // Pre-pcall hook execution queue (safely drain pending scripts)
                     Execution::ExecutionEngine::Get().ExecuteQueue(L);
                 }
