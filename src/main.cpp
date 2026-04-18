@@ -1,7 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <thread>
-#include <atomic>
 #include "Core/Logger.hpp"
 #include "Luau/LuauAPI.hpp"
 #include "Hooks/HookManager.hpp"
@@ -24,36 +22,10 @@ extern "C" {
         return BadPlace::Execution::EnvironmentManager::Get().PollLog();
     }
 
-    __declspec(dllexport) int BadPlace_InjectIntoProcess(const char* processName) {
-        // Since we are already building the DLL, this API would typically be implemented differently 
-        // e.g., via a separate launcher executable or host context.
-        // Left dynamically to appease older debugging tests / references
-        return 0; // Success
-    }
 }
 
-std::atomic<bool> g_running{true};
 
-// For manual testing outside of IPC when UI is not attached
-void ConsoleThread() {
-    BadPlace::Logger::Log("Console input thread started. Type Lua code to execute, or 'quit' to exit.");
-    char buffer[4096];
-    while (g_running) {
-        if (fgets(buffer, sizeof(buffer), stdin)) {
-            std::string line(buffer);
-            if (!line.empty() && line.back() == '\n') line.pop_back();
-            if (!line.empty() && line.back() == '\r') line.pop_back();
-            
-            if (line == "quit") {
-                BadPlace::Logger::Log("Exiting test thread.");
-                break;
-            }
-            if (!line.empty()) {
-                BadPlace_ExecuteLua(line.c_str());
-            }
-        }
-    }
-}
+
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
     switch (ul_reason_for_call) {
@@ -69,11 +41,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             }
         }
 
-        std::thread(ConsoleThread).detach();
         break;
     }
     case DLL_PROCESS_DETACH: {
-        g_running = false;
         BadPlace::Hooks::Cleanup();
         BadPlace::Logger::Free();
         break;
