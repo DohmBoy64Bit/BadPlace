@@ -59,7 +59,7 @@ namespace BadPlace {
         static std::string ResolveWorkspacePath(const std::string& inputPath) {
             char path[MAX_PATH];
             if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, path))) {
-                std::filesystem::path workspaceRoot = std::filesystem::path(path) / "BadPlaceExecutor" / "Workspace";
+                std::filesystem::path workspaceRoot = std::filesystem::path(path) / "TheBadPlace" / "Workspace";
                 if (!std::filesystem::exists(workspaceRoot)) std::filesystem::create_directories(workspaceRoot);
                 std::filesystem::path targetPath = workspaceRoot / inputPath;
                 std::filesystem::path normRoot = std::filesystem::weakly_canonical(workspaceRoot);
@@ -235,18 +235,21 @@ namespace BadPlace {
                 return 0;
             }
 
+            // game is now on the stack. Let's record its absolute index so we can reference it directly.
+            int gameAbsIdx = original_lua_gettop(L);
+
             // Get Game Name
             std::string gameName = "World";
-            original_lua_getfield(L, -1, "Name");
+            original_lua_getfield(L, gameAbsIdx, "Name");
             if (original_lua_type(L, -1) == LUA_TSTRING) {
                 const char* n = original_lua_tolstring(L, -1, nullptr);
                 if (n) gameName = SanitizeName(n);
             }
-            original_lua_settop(L, -2);
+            original_lua_settop(L, -2); // pop Name
 
             char appdataPath[MAX_PATH];
             SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdataPath);
-            std::filesystem::path workspaceRoot = std::filesystem::path(appdataPath) / "BadPlaceExecutor" / "Workspace";
+            std::filesystem::path workspaceRoot = std::filesystem::path(appdataPath) / "TheBadPlace" / "Workspace";
             std::filesystem::path gameRootPath = workspaceRoot / gameName;
             std::filesystem::path scriptsRootPath = gameRootPath / "Scripts";
             
@@ -257,23 +260,14 @@ namespace BadPlace {
                 return 0;
             }
 
-            // Pin a registry ref to `game` for parent-walking later.
-            // luaL_ref POPS, so duplicate first — original stays on top.
-            original_lua_pushvalue(L, -1);
-            int rootRef = original_luaL_ref(L, LUA_REGISTRYINDEX);
-            Logger::Log(("C++ SaveInstance: game pinned, rootRef=" + std::to_string(rootRef)).c_str());
-
             // Call game:GetDescendants()
-            // Stack before: [game]
-            original_lua_getfield(L, -1, "GetDescendants"); // Stack: [game, GetDescendants]
-            original_lua_pushvalue(L, -2);                  // Stack: [game, GetDescendants, game]
-            original_lua_remove(L, -3);                     // Stack: [GetDescendants, game]
+            original_lua_getfield(L, gameAbsIdx, "GetDescendants"); // method
+            original_lua_pushvalue(L, gameAbsIdx);                  // self
             Logger::Log("C++ SaveInstance: Calling GetDescendants...");
-            if (original_lua_pcall(L, 1, 1, 0) != 0) {     // Stack: [table] or [errmsg]
+            if (original_lua_pcall(L, 1, 1, 0) != 0) {     // Stack gets table or error
                 const char* err = original_lua_tolstring(L, -1, nullptr);
                 Logger::Log(("[ERROR] GetDescendants failed: " + std::string(err ? err : "?")).c_str());
                 IPC::PipeServer::Get().PushLog("SaveInstance | Error: GetDescendants failed.");
-                original_luaL_unref(L, LUA_REGISTRYINDEX, rootRef);
                 return 0;
             }
             Logger::Log("C++ SaveInstance: GetDescendants returned.");
@@ -305,95 +299,129 @@ namespace BadPlace {
                     continue;
                 }
 
-                // Identify Script via IsA
+                // Identify Script via IsA or ClassName
                 bool isScript = false;
-                original_lua_getfield(L, objIdx, "IsA");
-                if (original_lua_type(L, -1) == LUA_TFUNCTION) {
-                    const char* types[] = { "Script", "LocalScript", "ModuleScript" };
-                    for (auto t : types) {
-                        original_lua_pushvalue(L, -1); // IsA Func
-                        original_lua_pushvalue(L, objIdx); // self
-                        original_lua_pushstring(L, t);
-                        if (original_lua_pcall(L, 2, 1, 0) == 0) {
-                            if (original_lua_type(L, -1) == LUA_TBOOLEAN &&
-                                original_lua_toboolean && original_lua_toboolean(L, -1)) {
-                                // IsA returned true — this is a script!
-                                isScript = true;
-                                original_lua_settop(L, -2);
-                                break;
-                            }
-                        }
-                        original_lua_settop(L, -2);
+                
+                // Method 1: Check native property ClassName
+                original_lua_getfield(L, objIdx, "ClassName");
+                if (original_lua_type(L, -1) == LUA_TSTRING) {
+                    std::string cname = original_lua_tolstring(L, -1, nullptr);
+                    if (cname == "Script" || cname == "LocalScript" || cname == "ModuleScript") {
+                        isScript = true;
                     }
                 }
-                original_lua_settop(L, -2); // Pop IsA
+                original_lua_settop(L, -2);
+                
+                // Method 2: Fallback to IsA method if ClassName wasn't accurate
+                if (!isScript) {
+                    original_lua_getfield(L, objIdx, "IsA");
+                    if (original_lua_type(L, -1) == LUA_TFUNCTION) {
+                        const char* types[] = { "Script", "LocalScript", "ModuleScript" };
+                        for (auto t : types) {
+                            original_lua_pushvalue(L, -1); // IsA Func
+                            original_lua_pushvalue(L, objIdx); // self
+                            original_lua_pushstring(L, t);
+                            if (original_lua_pcall(L, 2, 1, 0) == 0) {
+                                if (original_lua_type(L, -1) == LUA_TBOOLEAN &&
+                                    original_lua_toboolean && original_lua_toboolean(L, -1)) {
+                                    isScript = true;
+                                    original_lua_settop(L, -2);
+                                    break;
+                                }
+                            }
+                            original_lua_settop(L, -2); // Pop return value or error
+                        }
+                    }
+                    original_lua_settop(L, -2); // Pop IsA
+                }
+
+                // Temporary logging of the first 5 objects to debug why scripts aren't hitting
+                if (i <= 5) {
+                    original_lua_getfield(L, objIdx, "Name");
+                    const char* n = (original_lua_type(L, -1) == LUA_TSTRING) ? original_lua_tolstring(L, -1, nullptr) : "Unknown";
+                    
+                    original_lua_getfield(L, objIdx, "ClassName");
+                    const char* c = (original_lua_type(L, -1) == LUA_TSTRING) ? original_lua_tolstring(L, -1, nullptr) : "NoClass";
+                    
+                    Logger::Log(("Debug Obj " + std::to_string(i) + ": Name=" + n + " | ClassName=" + c).c_str());
+                    original_lua_settop(L, -3); // Pop Name and ClassName
+                }
+
 
                 if (isScript) {
                     // Source
                     original_lua_getfield(L, objIdx, "Source");
                     size_t srcLen = 0;
-                    const char* src = original_lua_tolstring(L, -1, &srcLen);
+                    const char* src = nullptr;
                     
-                    if (src && srcLen > 0) {
-                        // Name
-                        original_lua_getfield(L, objIdx, "Name");
-                        std::string name = "Unnamed";
-                        if (original_lua_type(L, -1) == LUA_TSTRING) {
-                            const char* n = original_lua_tolstring(L, -1, nullptr);
-                            if (n) name = SanitizeName(n);
-                        }
-                        original_lua_settop(L, -2);
-
-                        // Path reconstruction via lua_rawequal parent comparison
-                        std::vector<std::string> pathParts;
-                        original_lua_pushvalue(L, objIdx);
-                        while (true) {
-                            original_lua_getfield(L, -1, "Parent");
-                            if (original_lua_type(L, -1) == LUA_TNIL) {
-                                original_lua_settop(L, -2);
-                                break;
-                            }
-
-                            // Push game ref and use rawequal to compare
-                            original_lua_rawgeti(L, LUA_REGISTRYINDEX, rootRef);
-                            bool atRoot = original_lua_rawequal ? (original_lua_rawequal(L, -1, -2) != 0) : false;
-                            original_lua_settop(L, -2); // Pop root ref, parent stays on top
-
-                            if (atRoot) {
-                                original_lua_settop(L, -2); // Pop parent, restore to current obj
-                                break;
-                            }
-
-                            // Not root — get parent name and push to pathParts
-                            original_lua_getfield(L, -1, "Name");
-                            if (original_lua_type(L, -1) == LUA_TSTRING) {
-                                const char* pRawName = original_lua_tolstring(L, -1, nullptr);
-                                if (pRawName) pathParts.insert(pathParts.begin(), SanitizeName(pRawName));
-                            }
-                            original_lua_settop(L, -2); // Pop name
-
-                            // Move up: replace current with parent
-                            original_lua_pushvalue(L, -1); // duplicate parent
-                            original_lua_remove(L, -2);     // remove previous current
-
-                            if (pathParts.size() > 15) break; // Depth limit
-                        }
-                        original_lua_settop(L, -2); // Pop current for path loop
-
-                        std::filesystem::path fullDir = scriptsRootPath;
-                        for (const auto& p : pathParts) fullDir /= p;
-                        
-                        try {
-                            if (!std::filesystem::exists(fullDir)) std::filesystem::create_directories(fullDir);
-                            std::ofstream file(fullDir / (name + ".lua"), std::ios::binary);
-                            if (file.is_open()) {
-                                file.write(src, srcLen);
-                                file.close();
-                                scriptCount++;
-                            }
-                        } catch (...) {}
+                    if (original_lua_type(L, -1) == LUA_TSTRING) {
+                        src = original_lua_tolstring(L, -1, &srcLen);
                     }
+                    
+                    // Name
+                    original_lua_getfield(L, objIdx, "Name");
+                    std::string name = "Unnamed";
+                    if (original_lua_type(L, -1) == LUA_TSTRING) {
+                        const char* n = original_lua_tolstring(L, -1, nullptr);
+                        if (n) name = SanitizeName(n);
+                    }
+                    original_lua_settop(L, -2); // pop Name
+
+                    // Path reconstruction via lua_rawequal parent comparison
+                    std::vector<std::string> pathParts;
+                    original_lua_pushvalue(L, objIdx);
+                    while (true) {
+                        original_lua_getfield(L, -1, "Parent");
+                        if (original_lua_type(L, -1) == LUA_TNIL) {
+                            original_lua_settop(L, -2);
+                            break;
+                        }
+
+                        // Compare parent (at top of stack) directly to game (at gameAbsIdx)
+                        bool atRoot = original_lua_rawequal ? (original_lua_rawequal(L, -1, gameAbsIdx) != 0) : false;
+
+                        if (atRoot) {
+                            original_lua_settop(L, -2); // Pop parent, restore to current obj
+                            break;
+                        }
+
+                        // Not root — get parent name and push to pathParts
+                        original_lua_getfield(L, -1, "Name");
+                        if (original_lua_type(L, -1) == LUA_TSTRING) {
+                            const char* pRawName = original_lua_tolstring(L, -1, nullptr);
+                            if (pRawName) pathParts.insert(pathParts.begin(), SanitizeName(pRawName));
+                        }
+                        original_lua_settop(L, -2); // Pop name
+
+                        // Move up: replace current with parent
+                        original_lua_pushvalue(L, -1);  // duplicate parent
+                        original_lua_replace(L, -3);    // overwrite previous current
+                        original_lua_settop(L, -2);     // Pop duplicate parent
+
+                        if (pathParts.size() > 15) break; // Depth limit
+                    }
+                    original_lua_settop(L, -2); // Pop current
+
+                    std::filesystem::path fullDir = scriptsRootPath;
+                    for (const auto& p : pathParts) fullDir /= p;
+                    
+                    try {
+                        if (!std::filesystem::exists(fullDir)) std::filesystem::create_directories(fullDir);
+                        std::ofstream file(fullDir / (name + ".lua"), std::ios::binary);
+                        if (file.is_open()) {
+                            if (src && srcLen > 0) {
+                                file.write(src, srcLen);
+                            } else {
+                                std::string missing = "-- [SaveInstance] Script source was empty or protected by the engine.\n";
+                                file.write(missing.c_str(), missing.length());
+                                Logger::Log(("SaveInstance: Found script but Source is empty: " + name).c_str());
+                            }
+                            file.close();
+                            scriptCount++;
+                        }
+                    } catch (...) {}
                 }
+                original_lua_settop(L, -2); // Pop Source
                 
                 original_lua_settop(L, loopTop); // STACK SAFETY: Restore to before object processing
                 
@@ -403,8 +431,9 @@ namespace BadPlace {
                 }
             }
 
-            original_luaL_unref(L, LUA_REGISTRYINDEX, rootRef);
-            original_lua_settop(L, -2); // Pop result table and game
+            // Cleanup: remove the table and the game object we kept pinned on the stack
+            // Setting top to right below gameAbsIdx cleans everything up perfectly.
+            original_lua_settop(L, gameAbsIdx - 1);
 
             Logger::Log(("SaveInstance: Complete. Saved " + std::to_string(scriptCount) + " scripts.").c_str());
             IPC::PipeServer::Get().PushLog("SaveInstance | Complete! Saved " + std::to_string(scriptCount) + " scripts.");
