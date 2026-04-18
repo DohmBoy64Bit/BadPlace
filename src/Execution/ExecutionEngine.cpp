@@ -2,7 +2,7 @@
 #include "Luau/LuauAPI.hpp"
 #include "Core/Logger.hpp"
 
-namespace PolyHook {
+namespace BadPlace {
     namespace Execution {
 
         void ExecutionEngine::QueueScript(const std::string& script) {
@@ -52,7 +52,7 @@ namespace PolyHook {
                 return false;
             }
 
-            int loadStatus = original_luau_load(L, "PolyHook", bytecode, outSize, 0);
+            int loadStatus = original_luau_load(L, "BadPlace", bytecode, outSize, 0);
             
             // Standard Luau doesn't rigorously enforce us freeing memory immediately if we don't have the fn,
             // but we really should. Actually, luau_compile uses standard malloc, so we can just use standard free.

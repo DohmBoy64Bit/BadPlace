@@ -10,7 +10,7 @@ luau_load_t original_luau_load = nullptr;
 
 luau_compile_t original_luau_compile = nullptr;
 
-namespace PolyHook {
+namespace BadPlace {
     namespace LuauAPI {
 
         uintptr_t GetFunctionAddress(const wchar_t* dll_name, const char* function_name) {

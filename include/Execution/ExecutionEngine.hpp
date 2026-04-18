@@ -5,7 +5,7 @@
 
 typedef struct lua_State lua_State;
 
-namespace PolyHook {
+namespace BadPlace {
     namespace Execution {
         class ExecutionEngine {
         private:

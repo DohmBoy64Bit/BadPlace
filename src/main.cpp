@@ -9,13 +9,13 @@
 
 // C-ABI Exports for P/Invoke / UI IPC
 extern "C" {
-    __declspec(dllexport) int PolyHook_ExecuteLua(const char* code) {
+    __declspec(dllexport) int BadPlace_ExecuteLua(const char* code) {
         if (!code) return -1;
-        PolyHook::Execution::ExecutionEngine::Get().QueueScript(std::string(code));
+        BadPlace::Execution::ExecutionEngine::Get().QueueScript(std::string(code));
         return 0;
     }
 
-    __declspec(dllexport) int PolyHook_InjectIntoProcess(const char* processName) {
+    __declspec(dllexport) int BadPlace_InjectIntoProcess(const char* processName) {
         // Since we are already building the DLL, this API would typically be implemented differently 
         // e.g., via a separate launcher executable or host context.
         // For the DLL itself, this is a stub for the UI requirement mapping.
@@ -27,7 +27,7 @@ std::atomic<bool> g_running{true};
 
 // For manual testing outside of IPC when UI is not attached
 void ConsoleThread() {
-    PolyHook::Logger::Log("Console input thread started. Type Lua code to execute, or 'quit' to exit.");
+    BadPlace::Logger::Log("Console input thread started. Type Lua code to execute, or 'quit' to exit.");
     char buffer[4096];
     while (g_running) {
         if (fgets(buffer, sizeof(buffer), stdin)) {
@@ -36,11 +36,11 @@ void ConsoleThread() {
             if (!line.empty() && line.back() == '\r') line.pop_back();
             
             if (line == "quit") {
-                PolyHook::Logger::Log("Exiting test thread.");
+                BadPlace::Logger::Log("Exiting test thread.");
                 break;
             }
             if (!line.empty()) {
-                PolyHook_ExecuteLua(line.c_str());
+                BadPlace_ExecuteLua(line.c_str());
             }
         }
     }
@@ -51,12 +51,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     case DLL_PROCESS_ATTACH: {
         DisableThreadLibraryCalls(hModule);
         
-        PolyHook::Logger::Initialize();
-        PolyHook::Logger::Log("PolyHook DLL Injected successfully.");
+        BadPlace::Logger::Initialize();
+        BadPlace::Logger::Log("BadPlace DLL Injected successfully.");
 
-        if (PolyHook::LuauAPI::Initialize()) {
-            if (PolyHook::Hooks::Initialize()) {
-                PolyHook::Logger::Log("All systems online.");
+        if (BadPlace::LuauAPI::Initialize()) {
+            if (BadPlace::Hooks::Initialize()) {
+                BadPlace::Logger::Log("All systems online.");
             }
         }
 
@@ -65,8 +65,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     }
     case DLL_PROCESS_DETACH: {
         g_running = false;
-        PolyHook::Hooks::Cleanup();
-        PolyHook::Logger::Free();
+        BadPlace::Hooks::Cleanup();
+        BadPlace::Logger::Free();
         break;
     }
     }

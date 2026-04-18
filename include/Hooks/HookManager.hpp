@@ -1,7 +1,7 @@
 #pragma once
 #include <Windows.h>
 
-namespace PolyHook {
+namespace BadPlace {
     namespace Hooks {
         bool Initialize();
         void Cleanup();

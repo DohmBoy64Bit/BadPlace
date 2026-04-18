@@ -6,7 +6,7 @@
 #include <cstring>
 #include <atomic>
 
-namespace PolyHook {
+namespace BadPlace {
     namespace Hooks {
 
         std::atomic<lua_State*> g_capturedState{ nullptr };

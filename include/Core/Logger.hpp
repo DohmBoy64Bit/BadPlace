@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace PolyHook {
+namespace BadPlace {
     namespace Logger {
         void Initialize();
         void Log(const std::string& message);

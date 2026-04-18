@@ -33,7 +33,7 @@ extern luau_load_t original_luau_load;
 
 extern luau_compile_t original_luau_compile;
 
-namespace PolyHook {
+namespace BadPlace {
     namespace LuauAPI {
         bool Initialize();
         uintptr_t GetFunctionAddress(const wchar_t* dll_name, const char* function_name);
