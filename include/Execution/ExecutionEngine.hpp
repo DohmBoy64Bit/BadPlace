@@ -12,7 +12,14 @@ namespace BadPlace {
         private:
             std::queue<std::string> m_scriptQueue;
             std::mutex m_queueMutex;
-            
+
+            // Coroutine scheduler: tracks yielded coroutines between game ticks
+            struct PendingCoroutine {
+                int registryRef;  // luaL_ref key keeping the thread alive in GC
+                lua_State* thread; // raw pointer for lua_resume
+            };
+            std::queue<PendingCoroutine> m_pendingCoroutines; // game-thread only, no mutex needed
+
             ExecutionEngine() = default;
 
         public:
