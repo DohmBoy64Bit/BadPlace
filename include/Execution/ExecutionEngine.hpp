@@ -28,6 +28,9 @@ namespace BadPlace {
 
             // Utility to wrap luau compiler and load
             bool CompileAndLoad(lua_State* L, const std::string& script);
+
+            // Scans and queues all scripts from AutoExec folder
+            void RunAutoExec();
         };
     }
 }

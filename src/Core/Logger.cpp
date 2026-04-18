@@ -10,11 +10,22 @@ namespace BadPlace {
         FILE* fErr = nullptr;
 
         void Initialize() {
-            AllocConsole();
-            freopen_s(&fOut, "CONOUT$", "w", stdout);
-            freopen_s(&fErr, "CONOUT$", "w", stderr);
-            SetConsoleTitleA("BadPlace Console");
-            Log("Logger initialized.");
+            char* appData;
+            size_t len;
+            _dupenv_s(&appData, &len, "APPDATA");
+            
+            if (appData) {
+                std::string logPath = std::string(appData) + "\\TheBadPlace\\BadPlace.log";
+                freopen_s(&fOut, logPath.c_str(), "a", stdout);
+                freopen_s(&fErr, logPath.c_str(), "a", stderr);
+                free(appData);
+                
+                // Set unbuffered for real-time logging to file
+                if (fOut) setvbuf(fOut, NULL, _IONBF, 0);
+                if (fErr) setvbuf(fErr, NULL, _IONBF, 0);
+            }
+
+            Log("Logger initialized (File).");
         }
 
         void Log(const std::string& message) {
@@ -33,7 +44,6 @@ namespace BadPlace {
         void Free() {
             if (fOut) fclose(fOut);
             if (fErr) fclose(fErr);
-            FreeConsole();
         }
     }
 }

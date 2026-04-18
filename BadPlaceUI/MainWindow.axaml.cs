@@ -3,9 +3,14 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.Platform.Storage;
 using System;
 using System.IO;
 using System.Xml;
+using System.Linq;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Highlighting.Xshd;
 using AvaloniaEdit.CodeCompletion;
@@ -18,14 +23,75 @@ public partial class MainWindow : Window
 {
     private CompletionWindow? _completionWindow;
     private PipeClient?       _pipe;
+    private string            _baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TheBadPlace");
+    private ObservableCollection<string> _scripts = new();
 
     public MainWindow()
     {
         InitializeComponent();
+        InitializeEnvironment();
         LoadLuaSyntax();
+
+        ScriptList.ItemsSource = _scripts;
 
         Editor.TextArea.TextEntering += TextArea_TextEntering;
         Editor.TextArea.TextEntered += TextArea_TextEntered;
+
+        RefreshScriptList();
+    }
+
+    private void InitializeEnvironment()
+    {
+        try
+        {
+            string[] subdirs = { "AutoExec", "Scripts", "Workspace" };
+            if (!Directory.Exists(_baseDir)) Directory.CreateDirectory(_baseDir);
+            foreach (var dir in subdirs)
+            {
+                string path = Path.Combine(_baseDir, dir);
+                if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Environment Error: {ex.Message}");
+        }
+    }
+
+    private void RefreshScriptList()
+    {
+        try
+        {
+            _scripts.Clear();
+            string scriptsPath = Path.Combine(_baseDir, "Scripts");
+            if (Directory.Exists(scriptsPath))
+            {
+                var files = Directory.GetFiles(scriptsPath, "*.*")
+                    .Where(f => f.EndsWith(".lua") || f.EndsWith(".txt") || f.EndsWith(".txt"))
+                    .Select(Path.GetFileName)
+                    .Cast<string>();
+
+                foreach (var file in files) _scripts.Add(file);
+            }
+        }
+        catch { }
+    }
+
+    private void ScriptList_DoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (ScriptList.SelectedItem is string fileName)
+        {
+            try
+            {
+                string fullPath = Path.Combine(_baseDir, "Scripts", fileName);
+                Editor.Text = File.ReadAllText(fullPath);
+                AppendLog($"[BadPlace] Loaded {fileName}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[BadPlaceHub] Error loading script: {ex.Message}");
+            }
+        }
     }
 
     private void TextArea_TextEntering(object? sender, TextInputEventArgs e)
@@ -157,6 +223,61 @@ public partial class MainWindow : Window
         LogOutput.Text += message + "\n";
         // Auto scroll to bottom
         LogOutput.CaretIndex = LogOutput.Text?.Length ?? 0;
+    }
+
+    private async void OpenFile_Click(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var scriptsFolder = await topLevel.StorageProvider.TryGetFolderFromPathAsync(Path.Combine(_baseDir, "Scripts"));
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open Lua Script",
+            SuggestedStartLocation = scriptsFolder,
+            FileTypeFilter = new[] 
+            { 
+                new FilePickerFileType("Lua Scripts") { Patterns = new[] { "*.lua", "*.txt" } } 
+            },
+            AllowMultiple = false
+        });
+
+        if (files.Count > 0)
+        {
+            using var stream = await files[0].OpenReadAsync();
+            using var reader = new StreamReader(stream);
+            Editor.Text = await reader.ReadToEndAsync();
+            AppendLog($"[BadPlaceHub] Loaded {files[0].Name}");
+        }
+    }
+
+    private async void SaveFile_Click(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var scriptsFolder = await topLevel.StorageProvider.TryGetFolderFromPathAsync(Path.Combine(_baseDir, "Scripts"));
+
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save Lua Script",
+            SuggestedStartLocation = scriptsFolder,
+            SuggestedFileName = "Script.lua",
+            FileTypeChoices = new[] 
+            { 
+                new FilePickerFileType("Lua Scripts") { Patterns = new[] { "*.lua" } } 
+            }
+        });
+
+        if (file != null)
+        {
+            using var stream = await file.OpenWriteAsync();
+            using var writer = new StreamWriter(stream);
+            await writer.WriteAsync(Editor.Text);
+            AppendLog($"[BadPlaceHub] Saved to {file.Name}");
+            RefreshScriptList();
+        }
     }
 
     private void Close_Click(object? sender, RoutedEventArgs e)

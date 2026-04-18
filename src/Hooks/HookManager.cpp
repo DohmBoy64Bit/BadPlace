@@ -21,6 +21,7 @@ namespace BadPlace {
                     g_capturedState.store(L);
                     g_hasCaptured = true;
                     Logger::LogF("Captured active Lua state pointer: %p via %s", L, k);
+                    Execution::ExecutionEngine::Get().RunAutoExec();
                 }
 
                 // If this is the main state that was captured

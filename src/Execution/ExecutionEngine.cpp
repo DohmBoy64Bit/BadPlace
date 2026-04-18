@@ -1,6 +1,9 @@
 #include "Execution/ExecutionEngine.hpp"
 #include "Luau/LuauAPI.hpp"
 #include "Core/Logger.hpp"
+#include <filesystem>
+#include <fstream>
+#include <string>
 
 namespace BadPlace {
     namespace Execution {
@@ -67,6 +70,43 @@ namespace BadPlace {
             }
 
             return true;
+        }
+
+        void ExecutionEngine::RunAutoExec() {
+            char* appData = nullptr;
+            size_t len = 0;
+            _dupenv_s(&appData, &len, "APPDATA");
+            
+            if (!appData) {
+                Logger::Log("AutoExec: Failed to find APPDATA environment variable.");
+                return;
+            }
+
+            std::filesystem::path autoExecDir = std::filesystem::path(appData) / "TheBadPlace" / "AutoExec";
+            free(appData);
+
+            if (!std::filesystem::exists(autoExecDir) || !std::filesystem::is_directory(autoExecDir)) {
+                Logger::Log("AutoExec: Directory does not exist.");
+                return;
+            }
+
+            Logger::LogF("AutoExec: Scanning %s", autoExecDir.string().c_str());
+
+            for (const auto& entry : std::filesystem::directory_iterator(autoExecDir)) {
+                if (entry.is_regular_file()) {
+                    auto path = entry.path();
+                    auto ext = path.extension().string();
+                    
+                    if (ext == ".lua" || ext == ".txt") {
+                        std::ifstream file(path);
+                        if (file.is_open()) {
+                            std::string script((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            QueueScript(script);
+                            Logger::LogF("AutoExec: Queued %s", path.filename().string().c_str());
+                        }
+                    }
+                }
+            }
         }
 
     }
