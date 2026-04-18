@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<SyntaxDefinition name="Lua" extensions=".lua" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+    <Color name="Comment" foreground="#57A64A" /> <!-- Visual Studio Green -->
+    <Color name="String" foreground="#D69D85" />
+    <Color name="Keywords" foreground="#569CD6" />
+    <Color name="Constants" foreground="#BD63C5" />
+    <Color name="Globals" foreground="#4EC9B0" />
+    <Color name="Number" foreground="#B5CEA8" />
+    <Color name="MethodParameters" foreground="#9CDCFE" />
+    
+    <RuleSet>
+        <Span color="Comment" multiline="true">
+            <Begin>--\[\[</Begin>
+            <End>\]\]</End>
+        </Span>
+        <Span color="Comment">
+            <Begin>--</Begin>
+        </Span>
+
+        <Span color="String">
+            <Begin>"</Begin>
+            <End>"</End>
+            <RuleSet>
+                <Span begin="\\" end="." />
+            </RuleSet>
+        </Span>
+        <Span color="String">
+            <Begin>'</Begin>
+            <End>'</End>
+            <RuleSet>
+                <Span begin="\\" end="." />
+            </RuleSet>
+        </Span>
+        
+        <Span color="String" multiline="true">
+            <Begin>\[\[</Begin>
+            <End>\]\]</End>
+        </Span>
+
+        <Keywords color="Keywords">
+            <Word>and</Word>
+            <Word>break</Word>
+            <Word>do</Word>
+            <Word>else</Word>
+            <Word>elseif</Word>
+            <Word>end</Word>
+            <Word>for</Word>
+            <Word>function</Word>
+            <Word>if</Word>
+            <Word>in</Word>
+            <Word>local</Word>
+            <Word>not</Word>
+            <Word>or</Word>
+            <Word>repeat</Word>
+            <Word>return</Word>
+            <Word>then</Word>
+            <Word>until</Word>
+            <Word>while</Word>
+        </Keywords>
+
+        <Keywords color="Constants">
+            <Word>false</Word>
+            <Word>true</Word>
+            <Word>nil</Word>
+        </Keywords>
+
+        <!-- Roblox and Synapse X custom globals -->
+        <Keywords color="Globals">
+            <Word>game</Word>
+            <Word>workspace</Word>
+            <Word>script</Word>
+            <Word>math</Word>
+            <Word>string</Word>
+            <Word>table</Word>
+            <Word>coroutine</Word>
+            <Word>print</Word>
+            <Word>warn</Word>
+            <Word>error</Word>
+            <Word>getgenv</Word>
+            <Word>getrawmetatable</Word>
+            <Word>hookmetamethod</Word>
+            <Word>require</Word>
+            <Word>pcall</Word>
+            <Word>tick</Word>
+            <Word>wait</Word>
+            <Word>task</Word>
+            <Word>Instance</Word>
+            <Word>Vector3</Word>
+            <Word>Color3</Word>
+            <Word>CFrame</Word>
+            <Word>UDim2</Word>
+        </Keywords>
+
+        <Rule color="Number">
+            \b0[xX][0-9a-fA-F]+|(\b\d+(\.[0-9]+)?|\.[0-9]+)([eE][+-]?[0-9]+)?
+        </Rule>
+    </RuleSet>
+</SyntaxDefinition>

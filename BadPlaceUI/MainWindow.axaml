@@ -1,0 +1,111 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:AvaloniaEdit="https://github.com/avaloniaui/avaloniaedit"
+        mc:Ignorable="d" d:DesignWidth="850" d:DesignHeight="450"
+        x:Class="BadPlaceUI.MainWindow"
+        Title="Bad Place Executor v2.0.0"
+        Background="#333333"
+        WindowDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        Width="850" Height="400"
+        FontFamily="Segoe UI">
+
+    <Window.Styles>
+        <Style Selector="Button.toolbarBtn">
+            <Setter Property="Background" Value="#383838" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#444444" />
+            <Setter Property="Padding" Value="15, 0" />
+            <Setter Property="Margin" Value="2, 7" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.toolbarBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#454545" />
+        </Style>
+        <Style Selector="Button.activeBtn">
+            <Setter Property="Background" Value="#2A3D52" />
+            <Setter Property="BorderBrush" Value="#4C6E8F" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="30, *, 45">
+        
+        <!-- Title Bar -->
+        <Grid Grid.Row="0" Background="#212121" PointerPressed="TopBar_PointerPressed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Icon B -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="B" FontWeight="Bold" FontSize="18" Foreground="#FF9900" />
+            </StackPanel>
+
+            <!-- Title -->
+            <TextBlock Grid.Column="1" Text="Bad Place Executor v2.0.0" Foreground="LightGray" 
+                       HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" />
+
+            <!-- Window Controls -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button Foreground="White" Background="Transparent" Width="40" VerticalAlignment="Stretch" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" BorderThickness="0" Click="Minimize_Click">
+                    <Path Data="M 3,11 L 11,11" Stroke="White" StrokeThickness="1.2" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                </Button>
+                <Button Foreground="White" Background="Transparent" Width="40" VerticalAlignment="Stretch" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" BorderThickness="0" Click="Close_Click">
+                    <Path Data="M 3,3 L 11,11 M 11,3 L 3,11" Stroke="White" StrokeThickness="1.2" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1" Background="#2F2F2F">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="150" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Text Editor Area -->
+            <AvaloniaEdit:TextEditor x:Name="Editor" Grid.Column="0" Margin="5" Background="#2B2B2B" Foreground="White"
+                                     ShowLineNumbers="True" 
+                                     FontFamily="Consolas" FontSize="14" />
+
+
+            <!-- Right Script List -->
+            <Grid Grid.Column="1" Margin="0,5,5,5" Background="#333333">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                
+                <ListBox Background="Transparent" BorderThickness="0" Foreground="White">
+                </ListBox>
+
+                <ScrollBar Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,0" />
+            </Grid>
+        </Grid>
+
+        <!-- Bottom Toolbar -->
+        <Grid Grid.Row="2" Background="#212121">
+            <StackPanel Orientation="Horizontal" Margin="5" Spacing="4">
+                <Button Classes="toolbarBtn" Content="Execute" />
+                <Button Classes="toolbarBtn" Content="Open File" />
+                <Button Classes="toolbarBtn" Content="Save File" />
+                <Button Classes="toolbarBtn" Content="Options" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="5" Spacing="4" HorizontalAlignment="Right">
+                <Button x:Name="AttachBtn" Classes="toolbarBtn" Content="Attach" Click="Attach_Click" />
+                <Button Classes="toolbarBtn" Content="Script Hub" />
+            </StackPanel>
+        </Grid>
+
+    </Grid>
+</Window>
