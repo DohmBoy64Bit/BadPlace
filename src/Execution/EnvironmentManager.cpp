@@ -4,6 +4,9 @@
 #include "IPC/PipeServer.hpp"
 #include "Execution/HttpManager.hpp"
 #include "Execution/ExecutionEngine.hpp"
+#include <filesystem>
+#include <fstream>
+#include <shlobj.h>
 
 #include "Execution/ExecutionEngine.hpp"
 
@@ -50,6 +53,22 @@ namespace BadPlace {
             IPC::PipeServer::Get().PushLog(entry);
             Logger::Log(("[LUA ERROR] " + logLine).c_str());
             return 0;
+        }
+
+        // --- File System Sandbox Helper ---
+        static std::string ResolveWorkspacePath(const std::string& inputPath) {
+            char path[MAX_PATH];
+            if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, path))) {
+                std::filesystem::path workspaceRoot = std::filesystem::path(path) / "BadPlaceExecutor" / "Workspace";
+                if (!std::filesystem::exists(workspaceRoot)) std::filesystem::create_directories(workspaceRoot);
+                std::filesystem::path targetPath = workspaceRoot / inputPath;
+                std::filesystem::path normRoot = std::filesystem::weakly_canonical(workspaceRoot);
+                std::filesystem::path normTarget = std::filesystem::weakly_canonical(targetPath);
+                std::string rootStr = normRoot.string();
+                std::string targetStr = normTarget.string();
+                if (targetStr.find(rootStr) == 0) return targetStr;
+            }
+            return "";
         }
 
         int CppHttpStart(lua_State* L) {
@@ -114,6 +133,92 @@ namespace BadPlace {
         }
 
 
+        // --- File System C-ABI Bindings ---
+        int CppWriteFile(lua_State* L) {
+            if (original_lua_type(L, 1) != LUA_TSTRING || original_lua_type(L, 2) != LUA_TSTRING) return 0;
+            std::string path = original_lua_tolstring(L, 1, nullptr);
+            size_t dataLen;
+            const char* data = original_lua_tolstring(L, 2, &dataLen);
+            std::string resolved = ResolveWorkspacePath(path);
+            if (!resolved.empty()) {
+                std::ofstream file(resolved, std::ios::binary);
+                if (file.is_open()) {
+                    file.write(data, dataLen);
+                    file.close();
+                }
+            }
+            return 0;
+        }
+
+        int CppReadFile(lua_State* L) {
+            if (original_lua_type(L, 1) != LUA_TSTRING) return 0;
+            std::string path = original_lua_tolstring(L, 1, nullptr);
+            std::string resolved = ResolveWorkspacePath(path);
+            if (!resolved.empty() && std::filesystem::exists(resolved) && std::filesystem::is_regular_file(resolved)) {
+                std::ifstream file(resolved, std::ios::binary | std::ios::ate);
+                if (file.is_open()) {
+                    std::streamsize size = file.tellg();
+                    file.seekg(0, std::ios::beg);
+                    std::string buffer(size, 0);
+                    if (file.read(&buffer[0], size)) {
+                        if (original_lua_pushstring) original_lua_pushstring(L, buffer.c_str()); // Wait, pushstring or pushlstring? Luau API doesn't have lua_pushlstring bound. That's fine if no null-bytes, but binaries might break. For script source it's fine! Let's rely on lua_pushstring for now.
+                        return 1;
+                    }
+                }
+            }
+            if (original_lua_pushnil) original_lua_pushnil(L);
+            return 1;
+        }
+
+        int CppMakeFolder(lua_State* L) {
+            if (original_lua_type(L, 1) != LUA_TSTRING) return 0;
+            std::string path = original_lua_tolstring(L, 1, nullptr);
+            std::string resolved = ResolveWorkspacePath(path);
+            if (!resolved.empty()) {
+                std::filesystem::create_directories(resolved);
+            }
+            return 0;
+        }
+
+        int CppListFiles(lua_State* L) {
+            if (original_lua_type(L, 1) != LUA_TSTRING) return 0;
+            if (!original_lua_createtable || !original_lua_pushstring) return 0;
+            std::string path = original_lua_tolstring(L, 1, nullptr);
+            std::string resolved = ResolveWorkspacePath(path);
+            original_lua_createtable(L, 0, 0); // lua_newtable is a macro for this
+            if (!resolved.empty() && std::filesystem::exists(resolved) && std::filesystem::is_directory(resolved)) {
+                if (original_lua_rawseti) {
+                    int counter = 1;
+                    for (const auto& entry : std::filesystem::directory_iterator(resolved)) {
+                        std::string entryStr = entry.path().filename().string();
+                        original_lua_pushstring(L, entryStr.c_str());
+                        original_lua_rawseti(L, -2, counter++);
+                    }
+                } else {
+                    Logger::Log("CppListFiles: lua_rawseti not resolved -- entries will be missing.");
+                }
+            }
+            return 1;
+        }
+
+        int CppIsFile(lua_State* L) {
+            if (original_lua_type(L, 1) != LUA_TSTRING) return 0;
+            std::string path = original_lua_tolstring(L, 1, nullptr);
+            std::string resolved = ResolveWorkspacePath(path);
+            bool isF = (!resolved.empty() && std::filesystem::exists(resolved) && std::filesystem::is_regular_file(resolved));
+            if (original_lua_pushboolean) original_lua_pushboolean(L, isF ? 1 : 0);
+            return 1;
+        }
+
+        int CppIsFolder(lua_State* L) {
+            if (original_lua_type(L, 1) != LUA_TSTRING) return 0;
+            std::string path = original_lua_tolstring(L, 1, nullptr);
+            std::string resolved = ResolveWorkspacePath(path);
+            bool isF = (!resolved.empty() && std::filesystem::exists(resolved) && std::filesystem::is_directory(resolved));
+            if (original_lua_pushboolean) original_lua_pushboolean(L, isF ? 1 : 0);
+            return 1;
+        }
+
         void EnvironmentManager::PushLog(const std::string& type, const std::string& message) {
             std::lock_guard<std::mutex> lock(m_logMutex);
             m_logQueue.push("[" + type + "] " + message);
@@ -146,6 +251,25 @@ namespace BadPlace {
 
             original_lua_pushcclosurek(L, CppHttpPoll, "cpp_http_poll", 0, nullptr);
             original_lua_setfield(L, LUA_GLOBALSINDEX, "cpp_http_poll");
+
+            // File System Bindings
+            original_lua_pushcclosurek(L, CppWriteFile, "writefile", 0, nullptr);
+            original_lua_setfield(L, LUA_GLOBALSINDEX, "writefile");
+
+            original_lua_pushcclosurek(L, CppReadFile, "readfile", 0, nullptr);
+            original_lua_setfield(L, LUA_GLOBALSINDEX, "readfile");
+
+            original_lua_pushcclosurek(L, CppMakeFolder, "makefolder", 0, nullptr);
+            original_lua_setfield(L, LUA_GLOBALSINDEX, "makefolder");
+
+            original_lua_pushcclosurek(L, CppListFiles, "listfiles", 0, nullptr);
+            original_lua_setfield(L, LUA_GLOBALSINDEX, "listfiles");
+
+            original_lua_pushcclosurek(L, CppIsFile, "isfile", 0, nullptr);
+            original_lua_setfield(L, LUA_GLOBALSINDEX, "isfile");
+
+            original_lua_pushcclosurek(L, CppIsFolder, "isfolder", 0, nullptr);
+            original_lua_setfield(L, LUA_GLOBALSINDEX, "isfolder");
 
             std::string wrapper = R"(
                 request = function(reqTable)

@@ -21,8 +21,9 @@ lua_pushcclosurek_t original_lua_pushcclosurek = nullptr;
 lua_setfield_t original_lua_setfield = nullptr;
 
 lua_pushinteger_t original_lua_pushinteger = nullptr;
-lua_newtable_t original_lua_newtable = nullptr;
+lua_createtable_t original_lua_createtable = nullptr;
 lua_rawgeti_t original_lua_rawgeti = nullptr;
+lua_rawseti_t original_lua_rawseti = nullptr;
 luaL_ref_t original_luaL_ref = nullptr;
 luaL_unref_t original_luaL_unref = nullptr;
 
@@ -60,8 +61,9 @@ namespace BadPlace {
             original_lua_setfield = (lua_setfield_t)GetFunctionAddress(L"Luau.VM.dll", "lua_setfield");
 
             original_lua_pushinteger = (lua_pushinteger_t)GetFunctionAddress(L"Luau.VM.dll", "lua_pushinteger");
-            original_lua_newtable = (lua_newtable_t)GetFunctionAddress(L"Luau.VM.dll", "lua_newtable");
+            original_lua_createtable = (lua_createtable_t)GetFunctionAddress(L"Luau.VM.dll", "lua_createtable");
             original_lua_rawgeti = (lua_rawgeti_t)GetFunctionAddress(L"Luau.VM.dll", "lua_rawgeti");
+            original_lua_rawseti = (lua_rawseti_t)GetFunctionAddress(L"Luau.VM.dll", "lua_rawseti");
             original_luaL_ref = (luaL_ref_t)GetFunctionAddress(L"Luau.VM.dll", "luaL_ref");
             original_luaL_unref = (luaL_unref_t)GetFunctionAddress(L"Luau.VM.dll", "luaL_unref");
 

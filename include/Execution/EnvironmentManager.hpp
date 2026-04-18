@@ -37,5 +37,13 @@ namespace BadPlace {
         int HookedPrint(lua_State* L);
         int HookedWarn(lua_State* L);
         int HookedError(lua_State* L);
+
+        // File System C-ABI bindings
+        int CppWriteFile(lua_State* L);
+        int CppReadFile(lua_State* L);
+        int CppMakeFolder(lua_State* L);
+        int CppListFiles(lua_State* L);
+        int CppIsFile(lua_State* L);
+        int CppIsFolder(lua_State* L);
     }
 }

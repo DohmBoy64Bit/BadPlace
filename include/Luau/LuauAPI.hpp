@@ -50,8 +50,9 @@ typedef void (*lua_pushboolean_t)(lua_State* L, int b);
 typedef void (*lua_pushcclosurek_t)(lua_State* L, lua_CFunction fn, const char* debugname, int nup, void* cont);
 typedef void (*lua_setfield_t)(lua_State* L, int idx, const char* k);
 typedef void (*lua_pushinteger_t)(lua_State* L, int n);
-typedef void (*lua_newtable_t)(lua_State* L);
+typedef void (*lua_createtable_t)(lua_State* L, int narr, int nrec);
 typedef void (*lua_rawgeti_t)(lua_State* L, int idx, int n);
+typedef void (*lua_rawseti_t)(lua_State* L, int idx, int n);
 typedef int (*luaL_ref_t)(lua_State* L, int idx);
 typedef void (*luaL_unref_t)(lua_State* L, int idx, int ref);
 
@@ -74,8 +75,9 @@ extern lua_pushboolean_t original_lua_pushboolean;
 extern lua_pushcclosurek_t original_lua_pushcclosurek;
 
 extern lua_pushinteger_t original_lua_pushinteger;
-extern lua_newtable_t original_lua_newtable;
+extern lua_createtable_t original_lua_createtable;
 extern lua_rawgeti_t original_lua_rawgeti;
+extern lua_rawseti_t original_lua_rawseti;
 extern luaL_ref_t original_luaL_ref;
 extern luaL_unref_t original_luaL_unref;
 
