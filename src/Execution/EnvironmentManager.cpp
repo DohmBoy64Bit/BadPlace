@@ -54,13 +54,41 @@ namespace BadPlace {
 
         int CppHttpStart(lua_State* L) {
             HttpRequest req;
-            if (original_lua_type(L, 1) == LUA_TSTRING) req.Url = original_lua_tolstring(L, 1, nullptr);
-            if (original_lua_type(L, 2) == LUA_TSTRING) req.Method = original_lua_tolstring(L, 2, nullptr);
-            if (original_lua_type(L, 3) == LUA_TSTRING) req.Body = original_lua_tolstring(L, 3, nullptr);
+            
+            if (original_lua_type(L, 1) != LUA_TTABLE) {
+                Logger::Log("CppHttpStart Error: Argument 1 is not a table");
+                return 0;
+            }
+
+            original_lua_getfield(L, 1, "Url");
+            if (original_lua_type(L, -1) == LUA_TSTRING) req.Url = original_lua_tolstring(L, -1, nullptr);
+            if (original_lua_settop) original_lua_settop(L, -2);
+
+            original_lua_getfield(L, 1, "Method");
+            if (original_lua_type(L, -1) == LUA_TSTRING) req.Method = original_lua_tolstring(L, -1, nullptr);
+            if (original_lua_settop) original_lua_settop(L, -2);
+
+            original_lua_getfield(L, 1, "Body");
+            if (original_lua_type(L, -1) == LUA_TSTRING) req.Body = original_lua_tolstring(L, -1, nullptr);
+            if (original_lua_settop) original_lua_settop(L, -2);
+
+            original_lua_getfield(L, 1, "Headers");
+            if (original_lua_type(L, -1) == LUA_TTABLE && original_lua_pushnil && original_lua_next) {
+                original_lua_pushnil(L);
+                while (original_lua_next(L, -2) != 0) {
+                    if (original_lua_type(L, -2) == LUA_TSTRING && original_lua_type(L, -1) == LUA_TSTRING) {
+                        std::string key = original_lua_tolstring(L, -2, nullptr);
+                        std::string val = original_lua_tolstring(L, -1, nullptr);
+                        req.Headers[key] = val;
+                    }
+                    if (original_lua_settop) original_lua_settop(L, -2);
+                }
+            }
+            if (original_lua_settop) original_lua_settop(L, -2);
 
             int ticketId = HttpManager::StartRequest(req);
             
-            original_lua_pushinteger(L, ticketId);
+            if (original_lua_pushinteger) original_lua_pushinteger(L, ticketId);
             return 1;
         }
 
@@ -122,11 +150,8 @@ namespace BadPlace {
             std::string wrapper = R"(
                 request = function(reqTable)
                     if type(reqTable) ~= "table" then error("BadPlace | request() requires a table") end
-                    local url = reqTable.Url or ""
-                    local method = reqTable.Method or "GET"
-                    local body = reqTable.Body or ""
                     
-                    local ticketId = cpp_http_start(url, method, body)
+                    local ticketId = cpp_http_start(reqTable)
                     
                     if task and task.spawn then
                         task.spawn(function()
@@ -142,7 +167,6 @@ namespace BadPlace {
                             end
                         end)
                     else
-                        -- Fallback if no task scheduler exists
                         local ready, status, resBody
                         repeat
                             ready, status, resBody = cpp_http_poll(ticketId)
