@@ -436,7 +436,7 @@ namespace BadPlace {
                                 // Check BytecodeCache!
                                 char appdataPath[MAX_PATH];
                                 if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdataPath))) {
-                                    // Hierarchical path: BytecodeCache\{GameID}\{path}.bin
+                                    // Hierarchical path: BytecodeCache\{GameID}\{name}.bin
                                     std::filesystem::path cacheBin = std::filesystem::path(appdataPath) / "TheBadPlace" / "BytecodeCache" / gameId / (name + ".bin");
                                     if (std::filesystem::exists(cacheBin)) {
                                         std::filesystem::copy_file(cacheBin, fullDir / (name + ".bin"), std::filesystem::copy_options::overwrite_existing);

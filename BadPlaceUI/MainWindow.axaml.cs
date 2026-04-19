@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private PipeClient?       _pipe;
     private string            _baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TheBadPlace");
     private ObservableCollection<string> _scripts = new();
+    private OptionsWindow? _optionsWindow;
 
     public MainWindow()
     {
@@ -283,16 +284,18 @@ public partial class MainWindow : Window
 
     private void Close_Click(object? sender, RoutedEventArgs e)
     {
+        // Close options window if open
+        _optionsWindow?.Close();
         Close();
     }
 
     private void Options_Click(object? sender, RoutedEventArgs e)
     {
-        var optionsWindow = new OptionsWindow();
-        optionsWindow.Show();
+        _optionsWindow = new OptionsWindow();
+        _optionsWindow.Show();
         
         // Listen for Dump Scripts request
-        optionsWindow.DumpRequested += async () =>
+        _optionsWindow.DumpRequested += async () =>
         {
             if (_pipe == null || !_pipe.IsConnected)
             {
@@ -309,10 +312,10 @@ public partial class MainWindow : Window
             await Task.Delay(5000);
             
             // If auto-decompile is enabled
-            if (optionsWindow.AutoDecompile)
+            if (_optionsWindow.AutoDecompile)
             {
                 AppendLog("BadPlace | Auto-decompiling bytecode...");
-                await DecompileAllBinFiles(optionsWindow.SaveBytecode);
+                await DecompileAllBinFiles(_optionsWindow.SaveBytecode);
             }
             
             AppendLog("BadPlace | Dump complete!");

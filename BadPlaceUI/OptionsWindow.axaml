@@ -30,7 +30,7 @@
 
     <Grid RowDefinitions="30, *">
         <!-- Title Bar -->
-        <Grid Grid.Row="0" Background="#212121">
+        <Grid Grid.Row="0" Background="#212121" PointerPressed="TopBar_PointerPressed">
             <TextBlock Text="Options" Foreground="LightGray" 
                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" />
             <Button HorizontalAlignment="Right" Background="Transparent" Width="30" Height="30"

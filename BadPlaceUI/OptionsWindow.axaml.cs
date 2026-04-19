@@ -33,6 +33,14 @@ public partial class OptionsWindow : Window
         Close();
     }
 
+    private void TopBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            BeginMoveDrag(e);
+        }
+    }
+
     private void DumpScripts_Click(object? sender, RoutedEventArgs e)
     {
         // Save checkbox states
