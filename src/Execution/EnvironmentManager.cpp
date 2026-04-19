@@ -250,9 +250,14 @@ namespace BadPlace {
             // Get GameID
             std::string gameId = "Unknown";
             original_lua_getfield(L, gameAbsIdx, "GameID");
-            if (original_lua_type(L, -1) == LUA_TSTRING) {
+            int gameIdType = original_lua_type(L, -1);
+            if (gameIdType == LUA_TSTRING) {
                 const char* gid = original_lua_tolstring(L, -1, nullptr);
                 if (gid) gameId = SanitizeName(gid);
+            } else if (gameIdType == LUA_TNUMBER) {
+                // GameID is a number - convert to string
+                double gidNum = original_lua_tonumberx(L, -1, nullptr);
+                gameId = std::to_string((long long)gidNum);
             }
             original_lua_settop(L, -1); // pop GameID
 
