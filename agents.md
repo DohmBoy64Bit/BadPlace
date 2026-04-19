@@ -56,25 +56,24 @@ Hooking `luau_load` intercepts bytecode AFTER engine deserializes it: reliable, 
 - Medal output uses proper function names, upvalue tracking, cleaner API calls
 - Koralys requires patch for v82: version 82 → 5 mapping in koralys.py:323
 
-### UI Integration Workflow (Backup Plan Only — Don't Implement Yet)
+### UI Integration Workflow
 
-**Folder Structure (match saveinstance hierarchy):**
+**Implemented:**
+- ✅ BytecodeCache hierarchical: `BytecodeCache\{GameID}\Scripts\...` (matches Workspace structure)
+- ✅ saveinstance() copies .bin to Workspace alongside empty .lua files
+- ✅ Auto-decompile checkbox: runs Medal on all .bin files after dump
+- ✅ Save bytecode checkbox: keeps .bin if checked, deletes if unchecked
+- ✅ Options window with Dump Scripts button
+
+**Folder Structure:**
 ```
 %APPDATA%\TheBadPlace\BytecodeCache\
-  <GameName>\
+  <GameID>\
     <Path\To\Script.bin>
 ```
-Example: `World\PlayerGUI\CurrencyHUD\UIView\LocalScript.bin`
+Example: `BytecodeCache\12345678\Scripts\PlayerGUI\CurrencyHUD\LocalScript.bin`
 
-Same structure for decompiled output after Medal.
-
-**Implementation Options:**
-
-1. **Auto-decompile after saveinstance** (Recommended - most seamless)
-   - After dump completes, detect all `.bin` files in workspace
-   - Run medal CLI on each in background thread
-   - Replace `.bin` with readable `.lua` automatically
-   - User sees clean decompiled code immediately
+**Remaining (Not Implemented):**
 
 2. **Manual decompile button**
    - "Decompile" button in script viewer
