@@ -412,9 +412,19 @@ namespace BadPlace {
                             if (src && srcLen > 0) {
                                 file.write(src, srcLen);
                             } else {
-                                std::string missing = "-- [SaveInstance] Script source was empty or protected by the engine.\n";
+                                std::string missing = "-- [SaveInstance] Script source was empty or protected by the engine.\n-- See associated .bin file for bytecode.\n";
                                 file.write(missing.c_str(), missing.length());
-                                Logger::Log(("SaveInstance: Found script but Source is empty: " + name).c_str());
+                                
+                                // Check BytecodeCache!
+                                char appdataPath[MAX_PATH];
+                                if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdataPath))) {
+                                    std::filesystem::path cacheBin = std::filesystem::path(appdataPath) / "TheBadPlace" / "BytecodeCache" / (name + ".bin");
+                                    if (std::filesystem::exists(cacheBin)) {
+                                        std::filesystem::copy_file(cacheBin, fullDir / (name + ".bin"), std::filesystem::copy_options::overwrite_existing);
+                                    } else {
+                                        Logger::Log(("SaveInstance: Found script but Source is empty and no bytecode cached: " + name).c_str());
+                                    }
+                                }
                             }
                             file.close();
                             scriptCount++;
