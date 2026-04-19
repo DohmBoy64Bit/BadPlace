@@ -20,6 +20,16 @@ using BadPlaceUI.IPC;
 
 namespace BadPlaceUI;
 
+public class DocumentTab
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "Untitled";
+    public string? FilePath { get; set; }
+    public string Content { get; set; } = "";
+    public bool IsModified { get; set; }
+    public Button TabButton { get; set; } = null!;
+}
+
 public partial class MainWindow : Window
 {
     private CompletionWindow? _completionWindow;
@@ -27,6 +37,9 @@ public partial class MainWindow : Window
     private string            _baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TheBadPlace");
     private ObservableCollection<string> _scripts = new();
     private OptionsWindow? _optionsWindow;
+    private List<DocumentTab> _documents = new();
+    private int _tabCounter = 1;
+    private DocumentTab? _activeDoc;
 
     public MainWindow()
     {
@@ -38,8 +51,33 @@ public partial class MainWindow : Window
 
         Editor.TextArea.TextEntering += TextArea_TextEntering;
         Editor.TextArea.TextEntered += TextArea_TextEntered;
+        Editor.TextChanged += Editor_TextChanged;
 
+        CreateNewTab();
         RefreshScriptList();
+    }
+
+    private void Editor_TextChanged(object? sender, EventArgs e)
+    {
+        if (_activeDoc != null)
+        {
+            _activeDoc.Content = Editor.Text;
+            _activeDoc.IsModified = _activeDoc.Content != GetFileContent(_activeDoc.FilePath);
+            UpdateTabTitle(_activeDoc);
+        }
+    }
+
+    private string GetFileContent(string? path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return "";
+        return File.ReadAllText(path);
+    }
+
+    private void UpdateTabTitle(DocumentTab doc)
+    {
+        var title = doc.IsModified ? "● " : "";
+        title += string.IsNullOrEmpty(doc.FilePath) ? doc.Title : Path.GetFileName(doc.FilePath);
+        doc.TabButton.Content = title;
     }
 
     private void InitializeEnvironment()
@@ -86,7 +124,61 @@ public partial class MainWindow : Window
             try
             {
                 string fullPath = Path.Combine(_baseDir, "Scripts", fileName);
-                Editor.Text = File.ReadAllText(fullPath);
+
+                var existing = _documents.FirstOrDefault(d => d.FilePath == fullPath);
+                if (existing != null)
+                {
+                    SwitchToDocument(existing);
+                }
+                else
+                {
+                    var content = File.ReadAllText(fullPath);
+                    _tabCounter++;
+                    var doc = new DocumentTab
+                    {
+                        Id = _tabCounter,
+                        Title = fileName,
+                        FilePath = fullPath,
+                        Content = content
+                    };
+
+                    var closeBtn = new Button
+                    {
+                        Content = "×",
+                        Padding = new Avalonia.Thickness(4, 0),
+                        Background = Brushes.Transparent,
+                        Foreground = Brushes.Gray,
+                        BorderThickness = new Avalonia.Thickness(0),
+                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                        Margin = new Avalonia.Thickness(4, 0, 0, 0)
+                    };
+                    closeBtn.Click += (s, ev) => CloseTab_Click(doc);
+
+                    var btn = new Button
+                    {
+                        Content = fileName,
+                        Tag = doc,
+                        Margin = new Avalonia.Thickness(2),
+                        Padding = new Avalonia.Thickness(6, 3),
+                        Background = new SolidColorBrush(0xFF383838),
+                        Foreground = Brushes.White
+                    };
+                    btn.Click += Tab_Click;
+
+                    var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+                    panel.Children.Add(btn);
+                    panel.Children.Add(closeBtn);
+
+                    doc.TabButton = btn;
+
+                    if (TabBar is StackPanel sp)
+                    {
+                        sp.Children.Insert(sp.Children.Count - 1, panel);
+                    }
+
+                    _documents.Add(doc);
+                    SwitchToDocument(doc);
+                }
                 AppendLog($"BadPlace | Loaded {fileName}");
             }
             catch (Exception ex)
@@ -247,15 +339,79 @@ public partial class MainWindow : Window
 
         if (files.Count > 0)
         {
-            using var stream = await files[0].OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            Editor.Text = await reader.ReadToEndAsync();
+            var filePath = files[0].Path.LocalPath;
+            var content = await File.ReadAllTextAsync(filePath);
+
+            var existing = _documents.FirstOrDefault(d => d.FilePath == filePath);
+            if (existing != null)
+            {
+                SwitchToDocument(existing);
+            }
+            else
+            {
+                _tabCounter++;
+                var doc = new DocumentTab
+                {
+                    Id = _tabCounter,
+                    Title = files[0].Name,
+                    FilePath = filePath,
+                    Content = content
+                };
+
+                var closeBtn = new Button
+                {
+                    Content = "×",
+                    Padding = new Avalonia.Thickness(4, 0),
+                    Background = Brushes.Transparent,
+                    Foreground = Brushes.Gray,
+                    BorderThickness = new Avalonia.Thickness(0),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Margin = new Avalonia.Thickness(4, 0, 0, 0)
+                };
+                closeBtn.Click += (s, ev) => CloseTab_Click(doc);
+
+                var btn = new Button
+                {
+                    Content = files[0].Name,
+                    Tag = doc,
+                    Margin = new Avalonia.Thickness(2),
+                    Padding = new Avalonia.Thickness(6, 3),
+                    Background = new SolidColorBrush(0xFF383838),
+                    Foreground = Brushes.White
+                };
+                btn.Click += Tab_Click;
+
+                var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+                panel.Children.Add(btn);
+                panel.Children.Add(closeBtn);
+
+                doc.TabButton = btn;
+
+                if (TabBar is StackPanel sp)
+                {
+                    sp.Children.Insert(sp.Children.Count - 1, panel);
+                }
+
+                _documents.Add(doc);
+                SwitchToDocument(doc);
+            }
             AppendLog($"BadPlace | Loaded {files[0].Name}");
         }
     }
 
     private async void SaveFile_Click(object? sender, RoutedEventArgs e)
     {
+        if (_activeDoc == null) return;
+
+        if (!string.IsNullOrEmpty(_activeDoc.FilePath))
+        {
+            await File.WriteAllTextAsync(_activeDoc.FilePath, Editor.Text);
+            _activeDoc.IsModified = false;
+            UpdateTabTitle(_activeDoc);
+            AppendLog($"BadPlace | Saved {_activeDoc.Title}");
+            return;
+        }
+
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel == null) return;
 
@@ -274,9 +430,12 @@ public partial class MainWindow : Window
 
         if (file != null)
         {
-            using var stream = await file.OpenWriteAsync();
-            using var writer = new StreamWriter(stream);
-            await writer.WriteAsync(Editor.Text);
+            var filePath = file.Path.LocalPath;
+            await File.WriteAllTextAsync(filePath, Editor.Text);
+            _activeDoc.FilePath = filePath;
+            _activeDoc.Title = file.Name;
+            _activeDoc.IsModified = false;
+            UpdateTabTitle(_activeDoc);
             AppendLog($"BadPlace | Saved to {file.Name}");
             RefreshScriptList();
         }
@@ -421,37 +580,96 @@ public partial class MainWindow : Window
         }
     }
 
-    private List<int> _openTabs = new();
-
-    private void Tab_Click(object? sender, RoutedEventArgs e)
+    private void CreateNewTab()
     {
-        if (sender is Button btn && btn.Tag != null)
+        _tabCounter++;
+        var doc = new DocumentTab
         {
-            Editor.Text = "";
-            AppendLog($"BadPlace | Switched to {btn.Content}");
-        }
-    }
+            Id = _tabCounter,
+            Title = $"Untitled-{_tabCounter - 1}",
+            Content = ""
+        };
 
-    private void NewTab_Click(object? sender, RoutedEventArgs e)
-    {
-        var nextTab = _openTabs.Count + 1;
-        var newBtn = new Button
+        var closeBtn = new Button
         {
-            Content = $"Tab {nextTab}",
-            Tag = nextTab,
+            Content = "×",
+            Padding = new Avalonia.Thickness(4, 0),
+            Background = Brushes.Transparent,
+            Foreground = Brushes.Gray,
+            BorderThickness = new Avalonia.Thickness(0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            Margin = new Avalonia.Thickness(4, 0, 0, 0)
+        };
+        closeBtn.Click += (s, e) => CloseTab_Click(doc);
+
+        var btn = new Button
+        {
+            Content = doc.Title,
+            Tag = doc,
             Margin = new Avalonia.Thickness(2),
             Padding = new Avalonia.Thickness(6, 3),
             Background = new SolidColorBrush(0xFF383838),
             Foreground = Brushes.White
         };
-        newBtn.Click += Tab_Click;
-        
+        btn.Click += Tab_Click;
+
+        var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+        panel.Children.Add(btn);
+        panel.Children.Add(closeBtn);
+
+        doc.TabButton = btn;
+
         if (TabBar is StackPanel sp)
         {
-            sp.Children.Insert(sp.Children.Count - 1, newBtn);
+            sp.Children.Insert(sp.Children.Count - 1, panel);
         }
-        
-        _openTabs.Add(nextTab);
-        Editor.Text = "";
+
+        _documents.Add(doc);
+        SwitchToDocument(doc);
+    }
+
+    private void Tab_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is DocumentTab doc)
+        {
+            SwitchToDocument(doc);
+        }
+    }
+
+    private void SwitchToDocument(DocumentTab doc)
+    {
+        if (_activeDoc != null)
+        {
+            _activeDoc.Content = Editor.Text;
+        }
+        _activeDoc = doc;
+        Editor.Text = doc.Content;
+    }
+
+    private void CloseTab_Click(DocumentTab doc)
+    {
+        int idx = _documents.IndexOf(doc);
+        if (idx >= 0)
+        {
+            if (TabBar is StackPanel sp && doc.TabButton.Parent is StackPanel panel)
+            {
+                sp.Children.Remove(panel);
+            }
+            _documents.Remove(doc);
+            if (_documents.Count == 0)
+            {
+                CreateNewTab();
+            }
+            else if (_activeDoc == doc)
+            {
+                var newIdx = Math.Min(idx, _documents.Count - 1);
+                SwitchToDocument(_documents[newIdx]);
+            }
+        }
+    }
+
+    private void NewTab_Click(object? sender, RoutedEventArgs e)
+    {
+        CreateNewTab();
     }
 }

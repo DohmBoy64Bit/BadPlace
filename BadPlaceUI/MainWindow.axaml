@@ -86,7 +86,6 @@
                     <!-- Tab bar -->
                     <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" MaxHeight="28">
                         <StackPanel Orientation="Horizontal" x:Name="TabBar">
-                            <Button x:Name="Tab1" Content="Tab 1" Click="Tab_Click" Tag="1" Margin="2" Padding="6,3" Background="#383838" Foreground="White" />
                             <Button Content="+" Click="NewTab_Click" Margin="2" Padding="6,3" Background="#444" Foreground="White" ToolTip.Tip="New Tab" />
                         </StackPanel>
                     </ScrollViewer>
