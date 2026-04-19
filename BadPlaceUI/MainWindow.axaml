@@ -84,7 +84,7 @@
                 <!-- Text Editor Area -->
                 <DockPanel Grid.Column="0" Margin="5">
                     <!-- Tab bar -->
-                    <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" MaxHeight="28">
+                    <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MaxHeight="28">
                         <StackPanel Orientation="Horizontal" x:Name="TabBar">
                             <Button Content="+" Click="NewTab_Click" Margin="2" Padding="6,3" Background="#444" Foreground="White" ToolTip.Tip="New Tab" />
                         </StackPanel>

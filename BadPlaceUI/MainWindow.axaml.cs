@@ -27,9 +27,9 @@ public class DocumentTab
     public string? FilePath { get; set; }
     public string Content { get; set; } = "";
     public bool IsModified { get; set; }
+    public bool IsInitial { get; set; }
     public Control? TabPanel { get; set; }
     public Button? TabButton { get; set; }
-    public Button? CloseButton { get; set; }
 }
 
 public partial class MainWindow : Window
@@ -144,18 +144,6 @@ public partial class MainWindow : Window
                         Content = content
                     };
 
-                    var closeBtn = new Button
-                    {
-                        Content = "×",
-                        Padding = new Avalonia.Thickness(4, 0),
-                        Background = Brushes.Transparent,
-                        Foreground = Brushes.Gray,
-                        BorderThickness = new Avalonia.Thickness(0),
-                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                        Margin = new Avalonia.Thickness(4, 0, 0, 0)
-                    };
-                    closeBtn.Click += (s, ev) => CloseTab_Click(doc);
-
                     var btn = new Button
                     {
                         Content = fileName,
@@ -167,12 +155,15 @@ public partial class MainWindow : Window
                     };
                     btn.Click += Tab_Click;
 
+                    var contextMenu = new ContextMenu();
+                    var closeItem = new MenuItem { Header = "Close" };
+                    closeItem.Click += (s, ev) => CloseTab_Click(doc);
+                    contextMenu.ItemsSource = new[] { closeItem };
+                    btn.ContextMenu = contextMenu;
+
                     var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Tag = doc };
                     panel.Children.Add(btn);
-                    panel.Children.Add(closeBtn);
-
                     doc.TabButton = btn;
-                    doc.CloseButton = closeBtn;
                     doc.TabPanel = panel;
 
                     if (TabBar is StackPanel sp)
@@ -362,18 +353,6 @@ public partial class MainWindow : Window
                     Content = content
                 };
 
-                var closeBtn = new Button
-                {
-                    Content = "×",
-                    Padding = new Avalonia.Thickness(4, 0),
-                    Background = Brushes.Transparent,
-                    Foreground = Brushes.Gray,
-                    BorderThickness = new Avalonia.Thickness(0),
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                    Margin = new Avalonia.Thickness(4, 0, 0, 0)
-                };
-                closeBtn.Click += (s, ev) => CloseTab_Click(doc);
-
                 var btn = new Button
                 {
                     Content = files[0].Name,
@@ -385,12 +364,15 @@ public partial class MainWindow : Window
                 };
                 btn.Click += Tab_Click;
 
+                var contextMenu = new ContextMenu();
+                var closeItem = new MenuItem { Header = "Close" };
+                closeItem.Click += (s, ev) => CloseTab_Click(doc);
+                contextMenu.ItemsSource = new[] { closeItem };
+                btn.ContextMenu = contextMenu;
+
                 var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Tag = doc };
                 panel.Children.Add(btn);
-                panel.Children.Add(closeBtn);
-
                 doc.TabButton = btn;
-                doc.CloseButton = closeBtn;
                 doc.TabPanel = panel;
 
                 if (TabBar is StackPanel sp)
@@ -586,27 +568,16 @@ public partial class MainWindow : Window
         }
     }
 
-private void CreateNewTab()
+private void CreateNewTab(bool hasCloseButton = true)
     {
         _tabCounter++;
         var doc = new DocumentTab
         {
             Id = _tabCounter,
             Title = $"Untitled-{_tabCounter - 1}",
-            Content = ""
+            Content = "",
+            IsInitial = !hasCloseButton
         };
-
-        var closeBtn = new Button
-        {
-            Content = "×",
-            Padding = new Avalonia.Thickness(4, 0),
-            Background = Brushes.Transparent,
-            Foreground = Brushes.Gray,
-            BorderThickness = new Avalonia.Thickness(0),
-            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            Margin = new Avalonia.Thickness(4, 0, 0, 0)
-        };
-        closeBtn.Click += (s, e) => CloseTab_Click(doc);
 
         var btn = new Button
         {
@@ -619,12 +590,19 @@ private void CreateNewTab()
         };
         btn.Click += Tab_Click;
 
+        if (hasCloseButton)
+        {
+            var contextMenu = new ContextMenu();
+            var closeItem = new MenuItem { Header = "Close" };
+            closeItem.Click += (s, e) => CloseTab_Click(doc);
+            contextMenu.ItemsSource = new[] { closeItem };
+            btn.ContextMenu = contextMenu;
+        }
+
         var container = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Tag = doc };
         container.Children.Add(btn);
-        container.Children.Add(closeBtn);
 
         doc.TabButton = btn;
-        doc.CloseButton = closeBtn;
         doc.TabPanel = container;
 
         if (TabBar is StackPanel sp)
@@ -650,13 +628,11 @@ private void CreateNewTab()
         {
             _activeDoc.Content = Editor.Text;
             _activeDoc.TabButton!.Background = new SolidColorBrush(0xFF383838);
-            _activeDoc.CloseButton!.Foreground = Brushes.Gray;
         }
         _activeDoc = doc;
         Editor.Text = doc.Content;
 
         doc.TabButton!.Background = new SolidColorBrush(0xFF505050);
-        doc.CloseButton!.Foreground = Brushes.White;
     }
 
     private void CloseTab_Click(DocumentTab doc)
@@ -671,7 +647,7 @@ private void CreateNewTab()
             _documents.Remove(doc);
             if (_documents.Count == 0)
             {
-                CreateNewTab();
+CreateNewTab(false);
             }
             else if (_activeDoc == doc)
             {
