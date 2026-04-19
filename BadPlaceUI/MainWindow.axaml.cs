@@ -55,7 +55,7 @@ public partial class MainWindow : Window
         Editor.TextArea.TextEntered += TextArea_TextEntered;
         Editor.TextChanged += Editor_TextChanged;
 
-        CreateNewTab();
+        CreateNewTab(false);
         RefreshScriptList();
     }
 
