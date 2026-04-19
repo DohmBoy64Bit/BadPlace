@@ -284,4 +284,37 @@ public partial class MainWindow : Window
     {
         Close();
     }
+
+    private void Options_Click(object? sender, RoutedEventArgs e)
+    {
+        var optionsWindow = new OptionsWindow();
+        optionsWindow.Show();
+        
+        // Listen for Dump Scripts request
+        optionsWindow.DumpRequested += async () =>
+        {
+            if (_pipe == null || !_pipe.IsConnected)
+            {
+                AppendLog("BadPlace | Not connected — click Attach first.");
+                return;
+            }
+            
+            AppendLog("BadPlace | Starting dump...");
+            
+            // Send saveinstance command to DLL
+            _pipe.SendScript("saveinstance()");
+            
+            // Wait a moment for it to complete
+            await Task.Delay(2000);
+            
+            // If auto-decompile is enabled
+            if (optionsWindow.AutoDecompile)
+            {
+                AppendLog("BadPlace | Auto-decompiling...");
+                // TODO: Run medal on .bin files in workspace
+            }
+            
+            AppendLog("BadPlace | Dump complete!");
+        };
+    }
 }

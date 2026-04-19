@@ -247,10 +247,19 @@ namespace BadPlace {
             }
             original_lua_settop(L, -2); // pop Name
 
+            // Get GameID
+            std::string gameId = "Unknown";
+            original_lua_getfield(L, gameAbsIdx, "GameID");
+            if (original_lua_type(L, -1) == LUA_TSTRING) {
+                const char* gid = original_lua_tolstring(L, -1, nullptr);
+                if (gid) gameId = SanitizeName(gid);
+            }
+            original_lua_settop(L, -1); // pop GameID
+
             char appdataPath[MAX_PATH];
             SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdataPath);
             std::filesystem::path workspaceRoot = std::filesystem::path(appdataPath) / "TheBadPlace" / "Workspace";
-            std::filesystem::path gameRootPath = workspaceRoot / gameName;
+            std::filesystem::path gameRootPath = workspaceRoot / gameId;
             std::filesystem::path scriptsRootPath = gameRootPath / "Scripts";
             
             try {

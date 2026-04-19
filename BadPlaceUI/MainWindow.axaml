@@ -132,7 +132,7 @@
                 <Button Classes="toolbarBtn" Content="Execute" Click="Execute_Click" x:Name="ExecuteBtn" />
                 <Button Classes="toolbarBtn" Content="Open File" Click="OpenFile_Click" />
                 <Button Classes="toolbarBtn" Content="Save File" Click="SaveFile_Click" />
-                <Button Classes="toolbarBtn" Content="Options" />
+                <Button x:Name="OptionsBtn" Classes="toolbarBtn" Content="Options" Click="Options_Click" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="5" Spacing="4" HorizontalAlignment="Right">
                 <Button x:Name="AttachBtn" Classes="toolbarBtn" Content="Attach" Click="Attach_Click" />

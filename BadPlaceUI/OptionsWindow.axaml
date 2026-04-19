@@ -1,0 +1,82 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="350"
+        x:Class="BadPlaceUI.OptionsWindow"
+        Title="Options"
+        Background="#2F2F2F"
+        WindowDecorations="None"
+        WindowStartupLocation="CenterOwner"
+        Width="400" Height="350"
+        CanResize="False"
+        FontFamily="Segoe UI">
+
+    <Window.Styles>
+        <Style Selector="Button.optionBtn">
+            <Setter Property="Background" Value="#383838" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#444444" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Button.optionBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#454545" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="30, *">
+        <!-- Title Bar -->
+        <Grid Grid.Row="0" Background="#212121">
+            <TextBlock Text="Options" Foreground="LightGray" 
+                       HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" />
+            <Button HorizontalAlignment="Right" Background="Transparent" Width="30" Height="30"
+                    BorderThickness="0" Click="Close_Click">
+                <Path Data="M 3,3 L 11,11 M 11,3 L 3,11" Stroke="White" StrokeThickness="1.2" 
+                      VerticalAlignment="Center" HorizontalAlignment="Center" />
+            </Button>
+        </Grid>
+
+        <!-- Options Content -->
+        <ScrollViewer Grid.Row="1" Margin="10">
+            <StackPanel Spacing="8">
+                <!-- Dump Scripts Section -->
+                <TextBlock Text="Script Dumping" Foreground="#FF9900" FontWeight="SemiBold" Margin="0,10,0,5" />
+                
+                <Button x:Name="DumpScriptsBtn" Classes="optionBtn" Click="DumpScripts_Click"
+                        ToolTip.Tip="Dumps all scripts from the game to the Workspace folder, preserving the game hierarchy structure.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Dump Scripts" Foreground="White" />
+                    </StackPanel>
+                </Button>
+
+                <CheckBox x:Name="AutoDecompileCheckBox" Content="Auto-decompile after dump" Foreground="LightGray" IsChecked="False" Margin="25,5,0,0"
+                         ToolTip.Tip="Automatically run Luau decompiler on all dumped bytecode after the dump completes." />
+
+                <CheckBox x:Name="SaveBytecodeCheckBox" Content="Save bytecode with scripts" Foreground="LightGray" IsChecked="True" Margin="25,5,0,0"
+                         ToolTip.Tip="Keep the original .bin bytecode file alongside the decompiled .lua file." />
+
+                <!-- Info -->
+                <TextBlock Text="Bytecode Cache" Foreground="#FF9900" FontWeight="SemiBold" Margin="0,15,0,5" />
+                
+                <Button Classes="optionBtn" Click="OpenBytecodeCache_Click"
+                        ToolTip.Tip="Open the BytecodeCache folder in Explorer.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Open Cache Folder" Foreground="White" />
+                    </StackPanel>
+                </Button>
+
+                <Button Classes="optionBtn" Click="ClearBytecodeCache_Click"
+                        ToolTip.Tip="Clear all cached bytecode files.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Clear Cache" Foreground="White" />
+                    </StackPanel>
+                </Button>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
