@@ -31,3 +31,19 @@
 
 - `Luau.VM.dll` and `Luau.Compiler.dll` must be present in Polytoria Client process
 - WinLibs POSIX UCRT (MinGW) for DLL compilation
+
+## Bytecode Recovery (Phase 1)
+
+- `HookManager.cpp` hooks `luau_load` to intercept bytecode chunks
+- Caches `.bin` files to `%APPDATA%\TheBadPlace\BytecodeCache`
+- `saveinstance()` falls back to bytecode cache if script source is empty
+- See `walkthrough.md` for full plan
+
+## Decompilation (Phase 2)
+
+- Polytoria uses Luau bytecode **v82 (0x52)** — older decompilers fail with `expected version 3...6, got 82`
+- Bytecode may be compressed with **RSB1** (zstd) header — decompress first
+- **Koralys** integrated at `thirdparty/Koralys/` (Python 3.13 + zstandard)
+- Wrapper: `thirdparty/Koralys/luau_decomp.py <input.bin> [output.lua]`
+- Requires patch: version 82 → 5 mapping in koralys.py:323
+- Custom Luau compiler is backup if Koralys fails (build from `luau-lang/luau` source)
