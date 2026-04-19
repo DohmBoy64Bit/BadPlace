@@ -420,4 +420,38 @@ public partial class MainWindow : Window
             AppendLog($"BadPlace | Decompile error: {ex.Message}");
         }
     }
+
+    private List<int> _openTabs = new();
+
+    private void Tab_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag != null)
+        {
+            Editor.Text = "";
+            AppendLog($"BadPlace | Switched to {btn.Content}");
+        }
+    }
+
+    private void NewTab_Click(object? sender, RoutedEventArgs e)
+    {
+        var nextTab = _openTabs.Count + 1;
+        var newBtn = new Button
+        {
+            Content = $"Tab {nextTab}",
+            Tag = nextTab,
+            Margin = new Avalonia.Thickness(2),
+            Padding = new Avalonia.Thickness(6, 3),
+            Background = new SolidColorBrush(0xFF383838),
+            Foreground = Brushes.White
+        };
+        newBtn.Click += Tab_Click;
+        
+        if (TabBar is StackPanel sp)
+        {
+            sp.Children.Insert(sp.Children.Count - 1, newBtn);
+        }
+        
+        _openTabs.Add(nextTab);
+        Editor.Text = "";
+    }
 }

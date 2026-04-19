@@ -82,9 +82,19 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Text Editor Area -->
-                <AvaloniaEdit:TextEditor x:Name="Editor" Grid.Column="0" Margin="5" Background="#2B2B2B" Foreground="White"
-                                         ShowLineNumbers="True" 
-                                         FontFamily="Consolas" FontSize="14" />
+                <DockPanel Grid.Column="0" Margin="5">
+                    <!-- Tab bar -->
+                    <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" MaxHeight="28">
+                        <StackPanel Orientation="Horizontal" x:Name="TabBar">
+                            <Button x:Name="Tab1" Content="Tab 1" Click="Tab_Click" Tag="1" Margin="2" Padding="6,3" Background="#383838" Foreground="White" />
+                            <Button Content="+" Click="NewTab_Click" Margin="2" Padding="6,3" Background="#444" Foreground="White" ToolTip.Tip="New Tab" />
+                        </StackPanel>
+                    </ScrollViewer>
+                    <!-- Editor -->
+                    <AvaloniaEdit:TextEditor x:Name="Editor" Background="#2B2B2B" Foreground="White"
+                                             ShowLineNumbers="True" 
+                                             FontFamily="Consolas" FontSize="14" />
+                </DockPanel>
 
                 <!-- Right Script List -->
                 <Grid Grid.Column="1" Margin="0,5,5,5" Background="#333333">
