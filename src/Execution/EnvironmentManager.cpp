@@ -4,6 +4,7 @@
 #include "IPC/PipeServer.hpp"
 #include "Execution/HttpManager.hpp"
 #include "Execution/ExecutionEngine.hpp"
+#include "Hooks/HookManager.hpp"
 #include <filesystem>
 #include <fstream>
 #include <shlobj.h>
@@ -261,6 +262,9 @@ namespace BadPlace {
             }
             original_lua_settop(L, -1); // pop GameID
 
+            // Set GameID for bytecode cache hierarchy
+            Hooks::SetCurrentGameId(gameId);
+
             char appdataPath[MAX_PATH];
             SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdataPath);
             std::filesystem::path workspaceRoot = std::filesystem::path(appdataPath) / "TheBadPlace" / "Workspace";
@@ -432,9 +436,11 @@ namespace BadPlace {
                                 // Check BytecodeCache!
                                 char appdataPath[MAX_PATH];
                                 if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdataPath))) {
-                                    std::filesystem::path cacheBin = std::filesystem::path(appdataPath) / "TheBadPlace" / "BytecodeCache" / (name + ".bin");
+                                    // Hierarchical path: BytecodeCache\{GameID}\{path}.bin
+                                    std::filesystem::path cacheBin = std::filesystem::path(appdataPath) / "TheBadPlace" / "BytecodeCache" / gameId / (name + ".bin");
                                     if (std::filesystem::exists(cacheBin)) {
                                         std::filesystem::copy_file(cacheBin, fullDir / (name + ".bin"), std::filesystem::copy_options::overwrite_existing);
+                                        Logger::Log(("SaveInstance: Copied bytecode for: " + name).c_str());
                                     } else {
                                         Logger::Log(("SaveInstance: Found script but Source is empty and no bytecode cached: " + name).c_str());
                                     }

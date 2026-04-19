@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using Avalonia.Platform.Storage;
 using System;
 using System.IO;
+using System.Diagnostics;
 using System.Xml;
 using System.Linq;
 using System.Collections.Generic;
@@ -304,17 +305,116 @@ public partial class MainWindow : Window
             // Send saveinstance command to DLL
             _pipe.SendScript("saveinstance()");
             
-            // Wait a moment for it to complete
-            await Task.Delay(2000);
+            // Wait for dump to complete (5 seconds for large games)
+            await Task.Delay(5000);
             
             // If auto-decompile is enabled
             if (optionsWindow.AutoDecompile)
             {
-                AppendLog("BadPlace | Auto-decompiling...");
-                // TODO: Run medal on .bin files in workspace
+                AppendLog("BadPlace | Auto-decompiling bytecode...");
+                await DecompileAllBinFiles(optionsWindow.SaveBytecode);
             }
             
             AppendLog("BadPlace | Dump complete!");
         };
+    }
+
+    private async Task DecompileAllBinFiles(bool keepBinFiles)
+    {
+        try
+        {
+            string medalPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "thirdparty", "medal", "target", "release", "luau-lifter.exe");
+            
+            // Find workspace folder (most recent GameID folder)
+            string workspacePath = Path.Combine(_baseDir, "Workspace");
+            if (!Directory.Exists(workspacePath))
+            {
+                AppendLog("BadPlace | No Workspace folder found.");
+                return;
+            }
+            
+            // Find the most recent game folder (by last write time)
+            var gameFolders = Directory.GetDirectories(workspacePath).OrderByDescending(d => Directory.GetLastWriteTime(d)).ToList();
+            if (gameFolders.Count == 0)
+            {
+                AppendLog("BadPlace | No game folders in Workspace.");
+                return;
+            }
+            
+            string gameFolder = gameFolders[0];
+            string gameName = Path.GetFileName(gameFolder);
+            AppendLog($"BadPlace | Processing game: {gameName}");
+            
+            // Find all .bin files
+            var binFiles = Directory.GetFiles(gameFolder, "*.bin", SearchOption.AllDirectories).ToList();
+            if (binFiles.Count == 0)
+            {
+                AppendLog("BadPlace | No .bin files found to decompile.");
+                return;
+            }
+            
+            AppendLog($"BadPlace | Found {binFiles.Count} bytecode files...");
+            
+            int successCount = 0;
+            int failCount = 0;
+            
+            foreach (var binFile in binFiles)
+            {
+                string luaFile = Path.ChangeExtension(binFile, ".lua");
+                string relativePath = Path.GetRelativePath(gameFolder, binFile);
+                
+                try
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = medalPath,
+                        Arguments = $"\"{binFile}\"",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    };
+                    
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        string output = await process.StandardOutput.ReadToEndAsync();
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                        {
+                            // Write decompiled output to .lua file
+                            await File.WriteAllTextAsync(luaFile, output);
+                            successCount++;
+                            
+                            // Delete .bin if user doesn't want to keep it
+                            if (!keepBinFiles)
+                            {
+                                try { File.Delete(binFile); } catch { }
+                            }
+                        }
+                        else
+                        {
+                            failCount++;
+                        }
+                    }
+                    else
+                    {
+                        failCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failCount++;
+                    AppendLog($"BadPlace | Error decompiling {relativePath}: {ex.Message}");
+                }
+            }
+            
+            AppendLog($"BadPlace | Decompile complete! Success: {successCount}, Failed: {failCount}");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"BadPlace | Decompile error: {ex.Message}");
+        }
     }
 }

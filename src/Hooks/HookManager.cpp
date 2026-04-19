@@ -22,12 +22,23 @@ namespace BadPlace {
             return s.empty() ? "Unnamed" : s;
         }
 
+        // GameID for bytecode cache hierarchy - set by EnvironmentManager
+        static std::string g_currentGameId;
+
+        void SetCurrentGameId(const std::string& gameId) {
+            g_currentGameId = gameId;
+        }
+
         // Hook for luau_load to intercept and cache incoming bytecode.
         int hooked_luau_load(lua_State* L, const char* chunkname, const char* data, size_t size, int env) {
             if (chunkname && data && size > 0) {
                 char path[MAX_PATH];
                 if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, path))) {
+                    // Use hierarchical path: BytecodeCache\{GameID}\{chunkname}.bin
                     std::filesystem::path cacheRoot = std::filesystem::path(path) / "TheBadPlace" / "BytecodeCache";
+                    if (!g_currentGameId.empty()) {
+                        cacheRoot = cacheRoot / g_currentGameId;
+                    }
                     try {
                         if (!std::filesystem::exists(cacheRoot)) std::filesystem::create_directories(cacheRoot);
                         
