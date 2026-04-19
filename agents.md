@@ -13,6 +13,35 @@
 - DLL must be built before UI build (auto-copied via `CopyBadPlaceDll` target)
 - Wait ~800ms after injection before connecting pipes (DLL needs time to spawn pipe server threads)
 
+## Multi-Document Tab System
+
+- **DocumentTab class** (`MainWindow.axaml.cs`): Tracks per-tab state
+  - `Id`: Unique tab identifier
+  - `Title`: Display name (e.g., "Untitled-1" or filename)
+  - `FilePath`: Full path to file (null for new files)
+  - `Content`: Editor content
+  - `IsModified`: Has unsaved changes flag
+  - `TabButton`: Reference to tab button (for title updates)
+- **Modified indicator (●)**: Orange dot prefix shows unsaved changes
+- **Close button (×)**: Red X on each tab, click to close
+- **Content persistence**: Switching tabs saves/restores editor content
+- **New tab (+)**: Creates empty untitled tab
+- **Script list double-click**: Opens file in new tab or switches to existing
+
+### Active Tab Visual Indicator
+
+Ideas (see "1+2 combo" implementation in MainWindow.axaml.cs):
+1. **Background color** — Brighter background for active tab (VS Code style)
+2. **Accent bar** — Orange/gold line across top of active tab (matches #FF9900 logo)
+3. **Bold title** — Simple text weight change
+4. **Underline** — Colored underline beneath title
+5. **Rounded top corners** — Only active tab has rounded top corners
+6. **Glow/shadow** — Subtle box shadow on active tab
+
+**Implementation**:
+- ✅ Brighter background (#505050) for active tab
+- ⏳ Orange accent bar - pending (layout issues with DockPanel in Avalonia)
+
 ## Architecture
 
 - **C++ DLL** (`BadPlace.dll`): Pure backend payload, no injection logic. Exposes C-ABI exports.

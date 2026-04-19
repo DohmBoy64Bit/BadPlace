@@ -27,7 +27,9 @@ public class DocumentTab
     public string? FilePath { get; set; }
     public string Content { get; set; } = "";
     public bool IsModified { get; set; }
-    public Button TabButton { get; set; } = null!;
+    public Control? TabPanel { get; set; }
+    public Button? TabButton { get; set; }
+    public Button? CloseButton { get; set; }
 }
 
 public partial class MainWindow : Window
@@ -165,11 +167,13 @@ public partial class MainWindow : Window
                     };
                     btn.Click += Tab_Click;
 
-                    var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+                    var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Tag = doc };
                     panel.Children.Add(btn);
                     panel.Children.Add(closeBtn);
 
                     doc.TabButton = btn;
+                    doc.CloseButton = closeBtn;
+                    doc.TabPanel = panel;
 
                     if (TabBar is StackPanel sp)
                     {
@@ -381,11 +385,13 @@ public partial class MainWindow : Window
                 };
                 btn.Click += Tab_Click;
 
-                var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+                var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Tag = doc };
                 panel.Children.Add(btn);
                 panel.Children.Add(closeBtn);
 
                 doc.TabButton = btn;
+                doc.CloseButton = closeBtn;
+                doc.TabPanel = panel;
 
                 if (TabBar is StackPanel sp)
                 {
@@ -580,7 +586,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CreateNewTab()
+private void CreateNewTab()
     {
         _tabCounter++;
         var doc = new DocumentTab
@@ -613,15 +619,17 @@ public partial class MainWindow : Window
         };
         btn.Click += Tab_Click;
 
-        var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
-        panel.Children.Add(btn);
-        panel.Children.Add(closeBtn);
+        var container = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Tag = doc };
+        container.Children.Add(btn);
+        container.Children.Add(closeBtn);
 
         doc.TabButton = btn;
+        doc.CloseButton = closeBtn;
+        doc.TabPanel = container;
 
         if (TabBar is StackPanel sp)
         {
-            sp.Children.Insert(sp.Children.Count - 1, panel);
+            sp.Children.Insert(sp.Children.Count - 1, container);
         }
 
         _documents.Add(doc);
@@ -641,9 +649,14 @@ public partial class MainWindow : Window
         if (_activeDoc != null)
         {
             _activeDoc.Content = Editor.Text;
+            _activeDoc.TabButton!.Background = new SolidColorBrush(0xFF383838);
+            _activeDoc.CloseButton!.Foreground = Brushes.Gray;
         }
         _activeDoc = doc;
         Editor.Text = doc.Content;
+
+        doc.TabButton!.Background = new SolidColorBrush(0xFF505050);
+        doc.CloseButton!.Foreground = Brushes.White;
     }
 
     private void CloseTab_Click(DocumentTab doc)
@@ -651,9 +664,9 @@ public partial class MainWindow : Window
         int idx = _documents.IndexOf(doc);
         if (idx >= 0)
         {
-            if (TabBar is StackPanel sp && doc.TabButton.Parent is StackPanel panel)
+            if (TabBar is StackPanel sp && doc.TabPanel != null)
             {
-                sp.Children.Remove(panel);
+                sp.Children.Remove(doc.TabPanel);
             }
             _documents.Remove(doc);
             if (_documents.Count == 0)
