@@ -1,0 +1,40 @@
+<p align="center">
+  <img src="./banner.png" alt="Koralys Disassembler Banner" width="500px" height=auto>
+</p>
+
+<h1 align="center">Koralys Disassembler & Decompiler</h1>
+
+This project is a result of countless hours of hard work and development. We ask that you do not claim this project as your own, and give credit where it is due.  
+
+> Join our [Discord Server](https://discord.gg/Thx7KGyM2Q) for updates, support, and more!
+
+> **Note:** This project is licensed under the GNU General Public License v3.0.
+
+If you'd like to compile your script, please refer to the `/compile` directory.
+
+## Written by:
+- **focat**
+  - Discord: @focat (676960182621962271)
+  - GitHub: [focat69](https://github.com/focat69)
+- **Jiface**
+  - Discord: @cephalocone (1460413830394937477)
+  - GitHub: [ssynical](https://github.com/ssynical)
+- **DataModell**
+  - Discord: @datamodel (773207810120089600)
+  - GitHub: [DataM0del](https://github.com/DataM0del)
+
+## Debug Mode
+
+Turning on the `DEBUG` flag will slow down the decompilation process significantly.
+- **Performance Impact:** 0.000406s -> 0.002075s, around 5x slower
+
+The `DEBUG` flag is meant for development purposes only. Turn off before using in production.
+
+## Issues
+
+- Decompile is broken/really bad/unfinished
+- No type checking
+- Does not handle variables kindly
+
+Please contribute and fix these bugs and more that you may find
+
