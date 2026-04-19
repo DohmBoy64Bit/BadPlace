@@ -250,9 +250,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Minimize_Click(object? sender, RoutedEventArgs e)
+    private async void Minimize_Click(object? sender, RoutedEventArgs e)
     {
+        for (int i = 10; i >= 0; i--)
+        {
+            Opacity = i / 10.0;
+            await Task.Delay(15);
+        }
         WindowState = WindowState.Minimized;
+        Opacity = 1;
     }
 
     private void Attach_Click(object? sender, RoutedEventArgs e)

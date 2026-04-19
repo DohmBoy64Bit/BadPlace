@@ -33,6 +33,7 @@
             <Setter Property="Background" Value="#2A3D52" />
             <Setter Property="BorderBrush" Value="#4C6E8F" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="15, 0" />
         </Style>
     </Window.Styles>
 
